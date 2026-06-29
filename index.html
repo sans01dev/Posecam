@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>포즈따라 v0.4</title>
+<title>포즈따라 v0.5</title>
 <style>
   :root{
     --accent:#FF2E63; --dash:#ffffff; --shutter:#FF2E63; --shutter-ring:#ffffff;
@@ -139,6 +139,21 @@
   .err .hint{margin-top:6px;font-size:12.5px;color:#7a7a86;line-height:1.6;background:#18181f;
     border:1px solid #26262e;border-radius:12px;padding:12px 14px;max-width:300px}
   .err .hint b{color:var(--accent)}
+
+  /* zoom slider (세로) */
+  #zoom{position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:6;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    background:rgba(14,14,18,.4);backdrop-filter:blur(6px);padding:12px 6px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.14)}
+  .zlabel{color:#fff;font-size:16px;font-weight:700;opacity:.85}
+  #zoomRange{writing-mode:vertical-lr;direction:rtl;-webkit-appearance:slider-vertical;
+    width:26px;height:34vh;max-height:300px;accent-color:var(--accent)}
+  /* drag hint badge */
+  #draghint{position:absolute;left:50%;bottom:calc(210px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);z-index:6;background:rgba(14,14,18,.55);backdrop-filter:blur(6px);
+    color:rgba(255,255,255,.85);font-size:11.5px;padding:6px 12px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);pointer-events:none;transition:opacity .4s}
+  #draghint.gone{opacity:0}
 </style>
 </head>
 <body class="t-film">
@@ -154,13 +169,19 @@
 
 <div id="datestamp">2026.06.29</div>
 
+<div id="zoom">
+  <div class="zlabel">＋</div>
+  <input id="zoomRange" type="range" min="20" max="125" value="42">
+  <div class="zlabel">－</div>
+</div>
+
 <div id="top">
   <div class="brand" id="brand">포즈<b>따라</b></div>
   <div class="top-sp"></div>
   <div class="ic" id="gridBtn" title="격자">⊞</div>
-  <div class="ic" id="levelBtn" title="수평">◇</div>
   <div class="ic" id="fillBtn" title="채움">◐</div>
   <div class="ic" id="flipPose" title="좌우반전">⇄</div>
+  <div class="ic" id="resetBtn" title="가운데로">⌖</div>
 </div>
 
 <div id="themes">
@@ -174,11 +195,13 @@
   <div id="poseTip">점선에 몸을 맞춰 서보세요</div>
 </div>
 
+<div id="draghint">가이드를 끌어 옮기고, 두 손가락으로 크기 조절</div>
+
 <div id="cats"></div>
 <div id="strip"></div>
 
 <div id="ctrls">
-  <div class="side" id="sizeBtn" title="크기">⤢</div>
+  <div class="side" id="hintBtn" title="안내">？</div>
   <button id="shutter" aria-label="촬영"></button>
   <div class="side" id="camFlip" title="카메라전환">⟲</div>
 </div>
@@ -344,20 +367,22 @@ const POSES=[
 ];
 
 const CATS=['혼자','셀카','커플','단체','여행'];
-let curCat='혼자', curPose=POSES[0], flip=false, sizeStep=0, fillOn=true;
-const SIZES=[0.74,0.9,0.6];
+let curCat='혼자', curPose=POSES[0], flip=false, fillOn=true;
+let poseScale=0.42, poseX=0, poseY=0;   /* 크기 / 좌우·상하 이동(viewBox 단위) */
+const MINS=0.2, MAXS=1.25;
 let facing='environment', stream=null;
-let gridOn=false, levelOn=false;
+let gridOn=false;
 
 const $=s=>document.querySelector(s);
 const overlay=$('#overlay'), cam=$('#cam');
 
-function svgForPose(p, dash=true, color='#fff', strokeW=1.1, withFill=false){
+function svgForPose(p, dash=true, color='#fff', strokeW=1.1, withFill=false, fixedScale=null, noPan=false){
   let inner='';
-  const scale=SIZES[sizeStep]; const cx=50;
+  const scale=(fixedScale!=null)?fixedScale:poseScale; const cx=50;
+  const ox=noPan?0:poseX, oy=noPan?0:poseY;
   p.figs.forEach(j=>{
     const tx=v=> flip ? (cx*2 - v) : v;
-    const sc=(x,y)=>[ cx + (tx(x)-cx)*scale, 65 + (y-65)*scale ];
+    const sc=(x,y)=>[ cx + (tx(x)-cx)*scale + ox, 65 + (y-65)*scale + oy ];
     // fill underlay (반투명 채움) — 두꺼운 선 + 머리 채움
     if(withFill){
       const fc=getComputedStyle(document.body).getPropertyValue('--fillcol').trim()||'rgba(255,255,255,.15)';
@@ -391,9 +416,9 @@ function renderOverlay(){
 }
 
 function thumbSVG(p){
-  const sf=flip, ss=sizeStep; flip=false; sizeStep=0;
-  const inner=svgForPose(p,false,'#fff',2.4,false);
-  flip=sf; sizeStep=ss;
+  const sf=flip; flip=false;
+  const inner=svgForPose(p,false,'#fff',2.4,false,0.78,true);
+  flip=sf;
   return `<svg viewBox="10 5 80 120" preserveAspectRatio="xMidYMid meet">${inner}</svg>`;
 }
 
@@ -424,11 +449,50 @@ $('#themes').querySelectorAll('.tbtn').forEach(el=>el.onclick=()=>{
 });
 
 $('#gridBtn').onclick=()=>{ gridOn=!gridOn; $('#gridBtn').classList.toggle('on',gridOn); renderOverlay(); };
-$('#levelBtn').onclick=()=>{ levelOn=!levelOn; $('#levelBtn').classList.toggle('on',levelOn);
-  $('#level')&&$('#level').classList.toggle('show',levelOn); if(levelOn) ensureOrientation(); };
 $('#fillBtn').onclick=()=>{ fillOn=!fillOn; $('#fillBtn').classList.toggle('on',fillOn); renderOverlay(); };
 $('#flipPose').onclick=()=>{ flip=!flip; renderOverlay(); };
-$('#sizeBtn').onclick=()=>{ sizeStep=(sizeStep+1)%SIZES.length; renderOverlay(); };
+$('#resetBtn').onclick=()=>{ poseX=0; poseY=0; renderOverlay(); };
+$('#hintBtn').onclick=()=>{ const d=$('#draghint'); d.classList.remove('gone'); clearTimeout(d._t); d._t=setTimeout(()=>d.classList.add('gone'),2600); };
+
+/* 크기 슬라이더 */
+const zoomRange=$('#zoomRange');
+zoomRange.addEventListener('input',()=>{ poseScale=zoomRange.value/100; renderOverlay(); });
+function syncZoom(){ zoomRange.value=Math.round(poseScale*100); }
+
+/* 드래그 이동 + 핀치 확대 (오버레이 위 터치) */
+const stage=$('#stage');
+let dragMode=null, startX=0, startY=0, startPX=0, startPY=0, startDist=0, startScale=0;
+function vbPerPx(){ const r=stage.getBoundingClientRect();
+  return 130 / r.height; }  /* slice 세로 기준: viewBox 130 ↔ 화면 높이 */
+function dist(t){ const dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.hypot(dx,dy); }
+stage.addEventListener('touchstart',e=>{
+  if(e.touches.length===1){ dragMode='pan'; startX=e.touches[0].clientX; startY=e.touches[0].clientY; startPX=poseX; startPY=poseY; }
+  else if(e.touches.length===2){ dragMode='pinch'; startDist=dist(e.touches); startScale=poseScale; }
+  hideDragHint();
+},{passive:true});
+stage.addEventListener('touchmove',e=>{
+  if(dragMode==='pan' && e.touches.length===1){
+    const k=vbPerPx();
+    poseX=startPX+(e.touches[0].clientX-startX)*k;
+    poseY=startPY+(e.touches[0].clientY-startY)*k;
+    renderOverlay();
+  }else if(dragMode==='pinch' && e.touches.length===2){
+    const r=dist(e.touches)/startDist;
+    poseScale=Math.min(MAXS,Math.max(MINS,startScale*r));
+    syncZoom(); renderOverlay();
+  }
+},{passive:true});
+stage.addEventListener('touchend',e=>{ if(e.touches.length===0) dragMode=null; },{passive:true});
+/* 마우스 드래그(PC 테스트용) */
+let mDown=false;
+stage.addEventListener('mousedown',e=>{ mDown=true; dragMode='pan'; startX=e.clientX; startY=e.clientY; startPX=poseX; startPY=poseY; hideDragHint(); });
+window.addEventListener('mousemove',e=>{ if(!mDown) return; const k=vbPerPx();
+  poseX=startPX+(e.clientX-startX)*k; poseY=startPY+(e.clientY-startY)*k; renderOverlay(); });
+window.addEventListener('mouseup',()=>{ mDown=false; dragMode=null; });
+
+let dragHintShown=false;
+function hideDragHint(){ if(!dragHintShown){ dragHintShown=true; setTimeout(()=>$('#draghint').classList.add('gone'),200); } }
+setTimeout(()=>$('#draghint').classList.add('gone'),4000);
 
 function ensureOrientation(){
   if(typeof DeviceOrientationEvent!=='undefined' && DeviceOrientationEvent.requestPermission){
@@ -490,19 +554,18 @@ $('#save').onclick=()=>{
 };
 window.addEventListener('message',ev=>{ try{ const m=typeof ev.data==='string'?JSON.parse(ev.data):ev.data;
   if(m&&m.type==='SAVE_RESULT'){} }catch(e){} });
-window.addEventListener('deviceorientation',e=>{ if(!levelOn) return; });
 
 function introDemo(){
   const demo=document.querySelector('#intro .i-demo');
-  const sf=flip, ss=sizeStep; flip=false; sizeStep=0;
+  const sf=flip; flip=false;
   const ac=getComputedStyle(document.body).getPropertyValue('--accent').trim()||'#FF2E63';
-  demo.innerHTML=svgForPose(POSES[0],true,ac,2.0,false);
-  flip=sf; sizeStep=ss;
+  demo.innerHTML=svgForPose(POSES[0],true,ac,2.0,false,0.78,true);
+  flip=sf;
 }
 
 $('#startBtn').onclick=async()=>{ $('#intro').classList.add('hide'); ensureOrientation(); await startCam(); };
 
-buildCats(); buildStrip(); selectPose(POSES[0]); introDemo();
+buildCats(); buildStrip(); selectPose(POSES[0]); introDemo(); syncZoom();
 </script>
 </body>
 </html>
