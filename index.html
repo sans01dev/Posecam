@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>포즈따라 v0.3</title>
+<title>포즈따라 v0.4</title>
 <style>
   :root{
     --accent:#FF2E63; --dash:#ffffff; --shutter:#FF2E63; --shutter-ring:#ffffff;
@@ -20,14 +20,14 @@
   body.t-film{ --accent:#E8B65A; --dash:#f6e8c8; --shutter:#E0492E; --shutter-ring:#f6e8c8;
     --chipon-bg:#E8B65A; --chipon-fg:#1a1610; --chipoff-bg:transparent; --chipoff-fg:#cdb88c;
     --brand-font:"Courier New",monospace; --label-font:"Courier New",monospace;
-    --fillcol:rgba(232,182,90,.14); --tint:rgba(120,84,30,.20); --chip-radius:7px; }
+    --fillcol:rgba(232,182,90,.11); --tint:rgba(120,84,30,.20); --chip-radius:7px; }
   body.t-mz{ --accent:#EC4899; --dash:#ffffff; --shutter:#EC4899; --shutter-ring:#A855F7;
     --chipon-bg:#EC4899; --chipon-fg:#fff; --chipoff-bg:rgba(255,255,255,.12); --chipoff-fg:#fff;
-    --fillcol:rgba(236,72,153,.18); --tint:rgba(40,20,55,.22); --chip-radius:999px; }
+    --fillcol:rgba(236,72,153,.14); --tint:rgba(40,20,55,.22); --chip-radius:999px; }
   body.t-luxe{ --accent:#C9A24B; --dash:rgba(255,255,255,.86); --shutter:#0a0a0c; --shutter-ring:#C9A24B;
     --chipon-bg:transparent; --chipon-fg:#C9A24B; --chipoff-bg:transparent; --chipoff-fg:#777;
     --brand-font:Georgia,"Times New Roman",serif; --label-font:Georgia,serif;
-    --fillcol:rgba(201,162,75,.12); --tint:rgba(0,0,0,.28); --chip-radius:2px; }
+    --fillcol:rgba(201,162,75,.10); --tint:rgba(0,0,0,.28); --chip-radius:2px; }
 
   #stage{position:absolute;inset:0;background:#000;overflow:hidden}
   #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
@@ -345,7 +345,7 @@ const POSES=[
 
 const CATS=['혼자','셀카','커플','단체','여행'];
 let curCat='혼자', curPose=POSES[0], flip=false, sizeStep=0, fillOn=true;
-const SIZES=[1,1.18,0.84];
+const SIZES=[0.74,0.9,0.6];
 let facing='environment', stream=null;
 let gridOn=false, levelOn=false;
 
@@ -362,9 +362,9 @@ function svgForPose(p, dash=true, color='#fff', strokeW=1.1, withFill=false){
     if(withFill){
       const fc=getComputedStyle(document.body).getPropertyValue('--fillcol').trim()||'rgba(255,255,255,.15)';
       const hd=j.head; const [hx,hy]=sc(hd[0],hd[1]);
-      inner+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${(hd[2]*scale).toFixed(1)}" fill="${fc}" stroke="none"/>`;
+      inner+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${(hd[2]*scale*0.82).toFixed(1)}" fill="${fc}" stroke="none"/>`;
       figurePaths(j).forEach(b=>{ const [x1,y1]=sc(b[0],b[1]); const [x2,y2]=sc(b[2],b[3]);
-        inner+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${fc}" stroke-width="${(strokeW*5.5).toFixed(1)}" stroke-linecap="round"/>`; });
+        inner+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${fc}" stroke-width="${(strokeW*2.6).toFixed(1)}" stroke-linecap="round"/>`; });
     }
     const hd=j.head; const [hx,hy]=sc(hd[0],hd[1]);
     inner+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${(hd[2]*scale).toFixed(1)}" fill="none" stroke="${color}" stroke-width="${strokeW}" ${dash?'stroke-dasharray="3 2.4"':''}/>`;
