@@ -3,167 +3,186 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>포즈따라 v0.2</title>
+<title>포즈따라 v0.3</title>
 <style>
   :root{
-    --accent:#FF2E63;      /* hot pink-red signature */
-    --ok:#22D3A6;
-    --ink:#0E0E12;
-    --paper:#FFFFFF;
-    --dim:rgba(255,255,255,.62);
+    --accent:#FF2E63; --dash:#ffffff; --shutter:#FF2E63; --shutter-ring:#ffffff;
+    --chipon-bg:#ffffff; --chipon-fg:#111; --chipoff-bg:rgba(20,20,26,.55); --chipoff-fg:#fff;
+    --brand-font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+    --label-font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+    --fillcol:rgba(255,46,99,.16); --tint:transparent; --chip-radius:999px;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;background:var(--ink);overflow:hidden;overscroll-behavior:none}
+  html,body{height:100%;background:#0E0E12;overflow:hidden;overscroll-behavior:none}
   body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#fff;position:fixed;inset:0}
 
-  /* ---- camera stage ---- */
+  /* ===== THEMES ===== */
+  body.t-film{ --accent:#E8B65A; --dash:#f6e8c8; --shutter:#E0492E; --shutter-ring:#f6e8c8;
+    --chipon-bg:#E8B65A; --chipon-fg:#1a1610; --chipoff-bg:transparent; --chipoff-fg:#cdb88c;
+    --brand-font:"Courier New",monospace; --label-font:"Courier New",monospace;
+    --fillcol:rgba(232,182,90,.14); --tint:rgba(120,84,30,.20); --chip-radius:7px; }
+  body.t-mz{ --accent:#EC4899; --dash:#ffffff; --shutter:#EC4899; --shutter-ring:#A855F7;
+    --chipon-bg:#EC4899; --chipon-fg:#fff; --chipoff-bg:rgba(255,255,255,.12); --chipoff-fg:#fff;
+    --fillcol:rgba(236,72,153,.18); --tint:rgba(40,20,55,.22); --chip-radius:999px; }
+  body.t-luxe{ --accent:#C9A24B; --dash:rgba(255,255,255,.86); --shutter:#0a0a0c; --shutter-ring:#C9A24B;
+    --chipon-bg:transparent; --chipon-fg:#C9A24B; --chipoff-bg:transparent; --chipoff-fg:#777;
+    --brand-font:Georgia,"Times New Roman",serif; --label-font:Georgia,serif;
+    --fillcol:rgba(201,162,75,.12); --tint:rgba(0,0,0,.28); --chip-radius:2px; }
+
   #stage{position:absolute;inset:0;background:#000;overflow:hidden}
   #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
   #cam.mirror{transform:scaleX(-1)}
+  #tint{position:absolute;inset:0;background:var(--tint);pointer-events:none;mix-blend-mode:multiply}
   #overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
 
-  /* ---- top bar ---- */
+  /* film sprockets */
+  #sprocketL,#sprocketR{position:absolute;top:0;bottom:0;width:16px;display:none;flex-direction:column;
+    justify-content:space-around;padding:10px 0;z-index:4;pointer-events:none}
+  #sprocketL{left:0}#sprocketR{right:0}
+  body.t-film #sprocketL,body.t-film #sprocketR{display:flex}
+  .spk{width:9px;height:18px;border-radius:2px;background:rgba(8,6,4,.78);margin:0 auto}
+
+  /* luxe corner frame */
+  #lframe{position:absolute;inset:12px;border:.8px solid var(--accent);opacity:.5;display:none;pointer-events:none;z-index:4}
+  body.t-luxe #lframe{display:block}
+
+  /* date stamp (film) */
+  #datestamp{position:absolute;top:max(16px,env(safe-area-inset-top));right:20px;z-index:6;
+    font-family:"Courier New",monospace;color:#ffb03b;font-size:14px;letter-spacing:1px;display:none;
+    text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  body.t-film #datestamp{display:block}
+
   #top{position:absolute;top:0;left:0;right:0;padding:max(14px,env(safe-area-inset-top)) 16px 14px;
-    display:flex;align-items:center;gap:10px;z-index:6;
-    background:linear-gradient(to bottom,rgba(0,0,0,.55),transparent)}
-  .brand{font-weight:800;font-size:17px;letter-spacing:-.4px}
+    display:flex;align-items:center;gap:9px;z-index:6;background:linear-gradient(to bottom,rgba(0,0,0,.5),transparent)}
+  .brand{font-weight:800;font-size:17px;letter-spacing:-.4px;font-family:var(--brand-font)}
   .brand b{color:var(--accent)}
+  body.t-luxe .brand{letter-spacing:2px;font-weight:600;font-size:15px}
   .top-sp{flex:1}
-  .ic{width:42px;height:42px;border-radius:50%;background:rgba(20,20,26,.55);
+  .ic{width:40px;height:40px;border-radius:50%;background:rgba(20,20,26,.5);
     border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;
-    backdrop-filter:blur(6px);cursor:pointer;font-size:18px}
-  .ic.on{background:var(--accent);border-color:var(--accent)}
+    backdrop-filter:blur(6px);cursor:pointer;font-size:17px;color:#fff}
+  .ic.on{background:var(--accent);border-color:var(--accent);color:#111}
 
-  /* ---- level meter ---- */
-  #level{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    width:140px;height:2px;z-index:5;pointer-events:none;opacity:.0;transition:opacity .2s}
-  #level.show{opacity:1}
-  #level .base{position:absolute;inset:0;background:rgba(255,255,255,.45);border-radius:2px}
-  #level .bar{position:absolute;left:50%;top:50%;width:140px;height:2px;
-    background:var(--accent);border-radius:2px;transform-origin:center}
-  #level.ok .bar{background:var(--ok)}
-  #levelDot{position:absolute;top:50%;left:50%;width:8px;height:8px;border-radius:50%;
-    transform:translate(-50%,-50%);background:#fff;z-index:5;opacity:0;transition:opacity .2s}
-  #levelDot.show{opacity:1}
-  #levelDot.ok{background:var(--ok);box-shadow:0 0 0 4px rgba(34,211,166,.25)}
+  /* theme switch */
+  #themes{position:absolute;left:0;right:0;z-index:6;display:flex;gap:7px;justify-content:center;
+    top:calc(max(14px,env(safe-area-inset-top)) + 50px)}
+  .tbtn{padding:6px 13px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;
+    background:rgba(20,20,26,.5);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(6px);color:#fff}
+  .tbtn.on{background:var(--accent);color:#111;border-color:var(--accent)}
 
-  /* ---- pose label ---- */
-  #poseTag{position:absolute;left:50%;top:calc(max(14px,env(safe-area-inset-top)) + 54px);
+  #poseTag{position:absolute;left:50%;top:calc(max(14px,env(safe-area-inset-top)) + 92px);
     transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:4px;
     pointer-events:none;text-align:center;width:86%}
-  #poseName{background:rgba(14,14,18,.5);backdrop-filter:blur(6px);
-    padding:6px 14px;border-radius:999px;font-weight:700;font-size:15px;
-    border:1px solid rgba(255,255,255,.14)}
-  #poseTip{font-size:12.5px;color:var(--dim);font-weight:500;
-    text-shadow:0 1px 3px rgba(0,0,0,.6);line-height:1.4}
+  #poseName{background:rgba(14,14,18,.5);backdrop-filter:blur(6px);padding:5px 14px;border-radius:999px;
+    font-weight:700;font-size:14px;border:1px solid rgba(255,255,255,.14);font-family:var(--label-font)}
+  #poseTip{font-size:12px;color:rgba(255,255,255,.66);font-weight:500;text-shadow:0 1px 3px rgba(0,0,0,.6);line-height:1.4}
 
-  /* ---- category chips ---- */
-  #cats{position:absolute;left:0;right:0;bottom:calc(168px + env(safe-area-inset-bottom));
-    z-index:6;display:flex;gap:8px;overflow-x:auto;padding:0 16px;scrollbar-width:none}
+  #cats{position:absolute;left:0;right:0;bottom:calc(170px + env(safe-area-inset-bottom));z-index:6;
+    display:flex;gap:8px;overflow-x:auto;padding:0 16px;scrollbar-width:none}
   #cats::-webkit-scrollbar{display:none}
-  .chip{flex:0 0 auto;padding:8px 15px;border-radius:999px;font-size:13.5px;font-weight:700;
-    background:rgba(20,20,26,.55);border:1px solid rgba(255,255,255,.16);
-    backdrop-filter:blur(6px);cursor:pointer;white-space:nowrap;transition:.15s}
-  .chip.on{background:#fff;color:var(--ink);border-color:#fff}
+  .chip{flex:0 0 auto;padding:8px 15px;border-radius:var(--chip-radius);font-size:13px;font-weight:700;
+    background:var(--chipoff-bg);border:1px solid rgba(255,255,255,.16);color:var(--chipoff-fg);
+    backdrop-filter:blur(6px);cursor:pointer;white-space:nowrap;transition:.15s;font-family:var(--label-font)}
+  .chip.on{background:var(--chipon-bg);color:var(--chipon-fg);border-color:var(--accent)}
+  body.t-luxe .chip{border:none;border-bottom:1.5px solid transparent;border-radius:0;backdrop-filter:none;background:transparent}
+  body.t-luxe .chip.on{border-bottom-color:var(--accent);background:transparent}
 
-  /* ---- pose strip ---- */
-  #strip{position:absolute;left:0;right:0;bottom:calc(108px + env(safe-area-inset-bottom));
-    z-index:6;display:flex;gap:9px;overflow-x:auto;padding:0 16px;scrollbar-width:none}
+  #strip{position:absolute;left:0;right:0;bottom:calc(108px + env(safe-area-inset-bottom));z-index:6;
+    display:flex;gap:9px;overflow-x:auto;padding:0 16px;scrollbar-width:none}
   #strip::-webkit-scrollbar{display:none}
-  .pcard{flex:0 0 auto;width:46px;height:52px;border-radius:12px;cursor:pointer;
+  .pcard{flex:0 0 auto;width:46px;height:54px;border-radius:12px;cursor:pointer;
     background:rgba(20,20,26,.5);border:1px solid rgba(255,255,255,.16);
-    backdrop-filter:blur(6px);display:grid;place-items:center;transition:.15s;padding:5px}
+    backdrop-filter:blur(6px);display:grid;place-items:center;transition:.15s;padding:4px}
+  body.t-film .pcard{border-radius:5px}
+  body.t-luxe .pcard{border-radius:2px}
   .pcard svg{width:100%;height:100%}
-  .pcard.on{border-color:var(--accent);background:rgba(255,46,99,.18);box-shadow:0 0 0 1px var(--accent)}
+  .pcard.on{border-color:var(--accent);background:var(--fillcol);box-shadow:0 0 0 1px var(--accent)}
 
-  /* ---- bottom controls ---- */
-  #ctrls{position:absolute;left:0;right:0;bottom:0;z-index:7;
-    padding:0 30px calc(20px + env(safe-area-inset-bottom));
-    height:calc(96px + env(safe-area-inset-bottom));
-    display:flex;align-items:center;justify-content:space-between;
-    background:linear-gradient(to top,rgba(0,0,0,.55),transparent)}
-  .side{width:54px;height:54px;border-radius:50%;background:rgba(20,20,26,.6);
-    border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;
-    backdrop-filter:blur(6px);cursor:pointer;font-size:22px}
-  #shutter{width:74px;height:74px;border-radius:50%;border:5px solid #fff;
-    background:var(--accent);cursor:pointer;position:relative;
-    box-shadow:0 6px 24px rgba(255,46,99,.4);transition:transform .08s}
+  #ctrls{position:absolute;left:0;right:0;bottom:0;z-index:7;padding:0 26px calc(20px + env(safe-area-inset-bottom));
+    height:calc(96px + env(safe-area-inset-bottom));display:flex;align-items:center;justify-content:space-between;
+    background:linear-gradient(to top,rgba(0,0,0,.5),transparent)}
+  .side{width:50px;height:50px;border-radius:50%;background:rgba(20,20,26,.55);
+    border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;backdrop-filter:blur(6px);cursor:pointer;font-size:20px;color:#fff}
+  #shutter{width:74px;height:74px;border-radius:50%;border:5px solid var(--shutter-ring);
+    background:var(--shutter);cursor:pointer;position:relative;transition:transform .08s}
   #shutter:active{transform:scale(.92)}
+  body.t-luxe #shutter{border-width:2px;background:transparent}
+  body.t-luxe #shutter::after{content:"";position:absolute;inset:8px;border-radius:50%;background:var(--accent)}
 
-  /* ---- result sheet ---- */
-  #sheet{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.78);
-    display:none;flex-direction:column;justify-content:flex-end;backdrop-filter:blur(4px)}
+  #sheet{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.78);display:none;
+    flex-direction:column;justify-content:flex-end;backdrop-filter:blur(4px)}
   #sheet.show{display:flex}
   .sheet-in{background:#15151b;border-radius:24px 24px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));
     max-height:88vh;display:flex;flex-direction:column;gap:14px}
   .sheet-grip{width:38px;height:4px;border-radius:99px;background:#3a3a44;margin:0 auto}
   #shot{width:100%;border-radius:16px;object-fit:contain;max-height:58vh;background:#000}
   .sheet-row{display:flex;gap:10px}
-  .btn{flex:1;padding:15px;border-radius:14px;font-size:15.5px;font-weight:800;border:none;cursor:pointer}
-  .btn.g{background:var(--accent);color:#fff}
+  .btn{flex:1;padding:15px;border-radius:14px;font-size:15px;font-weight:800;border:none;cursor:pointer}
+  .btn.g{background:var(--accent);color:#111}
   .btn.o{background:#26262e;color:#fff}
 
-  /* ---- intro ---- */
-  #intro{position:absolute;inset:0;z-index:40;background:var(--ink);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px;text-align:center}
+  #intro{position:absolute;inset:0;z-index:40;background:#0E0E12;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:16px;padding:32px;text-align:center}
   #intro.hide{display:none}
   .i-logo{font-size:30px;font-weight:900;letter-spacing:-1px}
   .i-logo b{color:var(--accent)}
-  .i-sub{color:var(--dim);font-size:15px;line-height:1.7;font-weight:500}
-  .i-demo{width:120px;height:140px;margin:6px 0}
-  #intro .btn.g{max-width:240px;width:100%}
+  .i-sub{color:rgba(255,255,255,.66);font-size:15px;line-height:1.7;font-weight:500}
+  .i-demo{width:118px;height:150px;margin:4px 0}
+  #intro .btn.g{max-width:240px;width:100%;color:#111}
 
-  .err{position:absolute;inset:0;z-index:30;display:none;flex-direction:column;
-    align-items:center;justify-content:center;gap:14px;padding:34px;text-align:center;background:var(--ink)}
+  .err{position:absolute;inset:0;z-index:30;display:none;flex-direction:column;align-items:center;
+    justify-content:center;gap:14px;padding:34px;text-align:center;background:#0E0E12}
   .err.show{display:flex}
-  .err p{color:var(--dim);font-size:14.5px;line-height:1.6}
-  .err .btn{flex:0 0 auto;width:100%;max-width:220px}
-  .err .hint{margin-top:6px;font-size:12.5px;color:#7a7a86;line-height:1.6;
-    background:#18181f;border:1px solid #26262e;border-radius:12px;padding:12px 14px;max-width:300px}
+  .err p{color:rgba(255,255,255,.66);font-size:14.5px;line-height:1.6}
+  .err .btn{flex:0 0 auto;width:100%;max-width:220px;color:#111}
+  .err .hint{margin-top:6px;font-size:12.5px;color:#7a7a86;line-height:1.6;background:#18181f;
+    border:1px solid #26262e;border-radius:12px;padding:12px 14px;max-width:300px}
   .err .hint b{color:var(--accent)}
 </style>
 </head>
-<body>
+<body class="t-film">
 
 <div id="stage">
   <video id="cam" autoplay playsinline muted></video>
+  <div id="tint"></div>
   <svg id="overlay" viewBox="0 0 100 130" preserveAspectRatio="xMidYMid slice"></svg>
+  <div id="sprocketL"></div><div id="sprocketR"></div>
+  <div id="lframe"></div>
   <div id="flash"></div>
 </div>
 
-<!-- level meter -->
-<div id="level"><div class="base"></div><div class="bar"></div></div>
-<div id="levelDot"></div>
+<div id="datestamp">2026.06.29</div>
 
-<!-- top bar -->
 <div id="top">
-  <div class="brand">포즈<b>따라</b></div>
+  <div class="brand" id="brand">포즈<b>따라</b></div>
   <div class="top-sp"></div>
   <div class="ic" id="gridBtn" title="격자">⊞</div>
   <div class="ic" id="levelBtn" title="수평">◇</div>
+  <div class="ic" id="fillBtn" title="채움">◐</div>
   <div class="ic" id="flipPose" title="좌우반전">⇄</div>
 </div>
 
-<!-- pose label -->
+<div id="themes">
+  <div class="tbtn on" data-t="t-film">필름</div>
+  <div class="tbtn" data-t="t-mz">MZ</div>
+  <div class="tbtn" data-t="t-luxe">고급</div>
+</div>
+
 <div id="poseTag">
   <div id="poseName">전신 풀샷</div>
   <div id="poseTip">점선에 몸을 맞춰 서보세요</div>
 </div>
 
-<!-- categories -->
 <div id="cats"></div>
-<!-- pose thumbnails -->
 <div id="strip"></div>
 
-<!-- bottom controls -->
 <div id="ctrls">
   <div class="side" id="sizeBtn" title="크기">⤢</div>
   <button id="shutter" aria-label="촬영"></button>
   <div class="side" id="camFlip" title="카메라전환">⟲</div>
 </div>
 
-<!-- result sheet -->
 <div id="sheet">
   <div class="sheet-in">
     <div class="sheet-grip"></div>
@@ -175,15 +194,13 @@
   </div>
 </div>
 
-<!-- intro -->
 <div id="intro">
   <div class="i-logo">포즈<b>따라</b></div>
   <svg class="i-demo" viewBox="0 0 100 130"></svg>
-  <div class="i-sub">점선 가이드에 몸을 맞추면<br>누구나 인생샷.<br>유행 포즈 25종, 그냥 따라만 하세요.</div>
+  <div class="i-sub">점선 가이드에 몸을 맞추면<br>누구나 인생샷.<br>유행 포즈, 그냥 따라만 하세요.</div>
   <button class="btn g" id="startBtn">카메라 켜기</button>
 </div>
 
-<!-- camera error -->
 <div class="err" id="err">
   <div style="font-size:34px">📷</div>
   <div style="font-weight:800;font-size:17px" id="errTitle">카메라를 켤 수 없어요</div>
@@ -193,53 +210,49 @@
 </div>
 
 <script>
-/* =========================================================
-   포즈따라 (posecam) v0.1  —  single-file pose guide camera
-   좌표계: 0~100 (x) / 0~130 (y) 정규화. SVG viewBox 동일.
-   ========================================================= */
-
-/* ---- 관절 헬퍼 ---- 한 사람의 막대 figure를 path 문자열로 ---- */
 function figurePaths(j){
-  // j: {head:[x,y,r], n,sL,sR,eL,eR,hL,hR, hip, hpL,hpR, kL,kR, fL,fR}
-  const L=[]; // [x1,y1,x2,y2] 뼈대
-  const add=(a,b)=>{ if(j[a]&&j[b]) L.push([j[a][0],j[a][1],j[b][0],j[b][1]]); };
+  const L=[]; const add=(a,b)=>{ if(j[a]&&j[b]) L.push([j[a][0],j[a][1],j[b][0],j[b][1]]); };
   add('n','sL'); add('n','sR'); add('n','hip');
   add('sL','eL'); add('eL','hL'); add('sR','eR'); add('eR','hR');
-  add('hip','hpL'); add('hip','hpR');
-  add('hpL','kL'); add('kL','fL'); add('hpR','kR'); add('kR','fR');
+  add('hip','hpL'); add('hip','hpR'); add('hpL','kL'); add('kL','fL'); add('hpR','kR'); add('kR','fR');
   return L;
 }
-
-/* ---- 25개 포즈 데이터 ----
-   상반신 위주(셀카/커플 일부)는 다리 키 생략 → 다리 안 그림.
-   여러 명은 figures 배열로. */
 const STAND={ n:[50,30], sL:[42,34], sR:[58,34], hip:[50,60],
   hpL:[45,61], hpR:[55,61], kL:[44,84], kR:[56,84], fL:[43,108], fR:[57,108] };
-
 function fig(o){ return Object.assign({head:[50,20,9]}, JSON.parse(JSON.stringify(STAND)), o); }
 
 const POSES=[
-/* ===== 혼자 (solo) ===== */
+/* 혼자 */
 {id:'s1',cat:'혼자',name:'전신 풀샷',tip:'점선에 몸을 맞춰 똑바로 서요',
   figs:[fig({ eL:[37,46], hL:[35,58], eR:[63,46], hR:[65,58] })]},
 {id:'s2',cat:'혼자',name:'로우앵글 다리길게',tip:'폰을 아래에서 위로! 다리가 길어 보여요',
   figs:[fig({ head:[50,14,7], n:[50,24], sL:[43,28],sR:[57,28], eL:[39,40],hL:[37,52], eR:[61,40],hR:[63,52],
     hip:[50,56], hpL:[46,57],hpR:[54,57], kL:[45,86],kR:[55,86], fL:[44,118],fR:[56,118] })]},
 {id:'s3',cat:'혼자',name:'뒷모습',tip:'등을 보이고 먼 곳을 바라봐요',
-  figs:[fig({ head:[50,20,9], eL:[40,46],hL:[40,58], eR:[60,46],hR:[60,58] })],back:true},
+  figs:[fig({ eL:[40,46],hL:[40,58], eR:[60,46],hR:[60,58] })]},
+{id:'s7',cat:'혼자',name:'어깨너머 돌아보기',tip:'몸은 돌리고 고개만 살짝 뒤로',
+  figs:[fig({ head:[54,20,9], n:[50,30], sL:[40,33],sR:[58,35], eL:[36,45],hL:[36,57], eR:[62,45],hR:[62,57] })]},
+{id:'s8',cat:'혼자',name:'쪼그려 앉기',tip:'카메라를 낮추고 한쪽 무릎으로 쪼그려요',
+  figs:[fig({ head:[50,28,9], n:[50,38], sL:[42,42],sR:[58,42], eL:[39,52],hL:[42,62], eR:[61,52],hR:[58,62],
+    hip:[50,66], hpL:[44,67],hpR:[56,67], kL:[38,82],kR:[62,82], fL:[44,104],fR:[56,104] })]},
 {id:'s4',cat:'혼자',name:'앉은 포즈',tip:'무릎을 세우고 편하게 앉아요',
   figs:[fig({ n:[50,38],sL:[43,42],sR:[57,42], eL:[40,52],hL:[44,60], eR:[60,52],hR:[56,60],
     hip:[50,66], hpL:[45,67],hpR:[55,67], kL:[40,80],kR:[60,80], fL:[44,96],fR:[56,96] })]},
 {id:'s5',cat:'혼자',name:'벽에 기대기',tip:'한 발을 벽에 대고 살짝 기대요',
   figs:[fig({ n:[52,30],sL:[44,34],sR:[60,34], eL:[42,46],hL:[44,58], eR:[64,44],hR:[66,54],
     hip:[52,60], hpL:[47,61],hpR:[57,61], kL:[46,84],kR:[60,80], fL:[45,108],fR:[64,104] })]},
-{id:'s6',cat:'혼자',name:'걷는 척',tip:'한 발 내딛고 자연스럽게 시선은 옆으로',
-  figs:[fig({ eL:[38,46],hL:[36,56], eR:[62,46],hR:[66,52],
-    kL:[42,84],kR:[58,82], fL:[38,108],fR:[64,106] })]},
+{id:'s6',cat:'혼자',name:'걷는 척',tip:'한 발 내딛고 시선은 옆으로',
+  figs:[fig({ eL:[38,46],hL:[36,56], eR:[62,46],hR:[66,52], kL:[42,84],kR:[58,82], fL:[38,108],fR:[64,106] })]},
 
-/* ===== 셀카 (selfie) — 상반신 크게 ===== */
+/* 셀카 */
+{id:'f6',cat:'셀카',name:'디카 셀카',tip:'양손으로 카메라를 들고 찰칵! 요즘 그 감성',
+  figs:[{head:[50,32,15], n:[50,56], sL:[34,64],sR:[66,64], eL:[38,72],hL:[45,50], eR:[62,72],hR:[55,50]}]},
 {id:'f1',cat:'셀카',name:'기본 브이',tip:'얼굴 옆에 브이! 살짝 턱 당기기',
   figs:[{head:[50,34,15], n:[50,58], sL:[34,66],sR:[66,66], eL:[30,80],hL:[40,52], eR:[70,80],hR:[60,52]}]},
+{id:'f7',cat:'셀카',name:'머리 넘기기',tip:'한 손으로 머리 쓸어올려 움직임을',
+  figs:[{head:[50,34,15], n:[50,58], sL:[34,66],sR:[66,66], eL:[40,46],hL:[48,30], eR:[70,78],hR:[64,82]}]},
+{id:'f8',cat:'셀카',name:'얼굴 반쯤 가리기',tip:'손으로 얼굴 절반만 가려 한쪽 눈만',
+  figs:[{head:[50,34,15], n:[50,58], sL:[34,66],sR:[66,66], eL:[36,58],hL:[46,40], eR:[70,80],hR:[64,84]}]},
 {id:'f2',cat:'셀카',name:'옆얼굴 손하트',tip:'고개 살짝 돌리고 손가락 하트',
   figs:[{head:[46,34,15], n:[48,58], sL:[34,66],sR:[64,66], eL:[32,78],hL:[34,50], eR:[68,78],hR:[64,82]}]},
 {id:'f3',cat:'셀카',name:'머리 위 큰 하트',tip:'양팔로 머리 위에 큰 하트를',
@@ -249,7 +262,7 @@ const POSES=[
 {id:'f5',cat:'셀카',name:'턱 괴기',tip:'한 손으로 턱을 괴고 시크하게',
   figs:[{head:[50,36,15], n:[50,60], sL:[35,68],sR:[65,68], eL:[42,62],hL:[47,48], eR:[68,80],hR:[66,86]}]},
 
-/* ===== 커플 (couple) — 두 명 ===== */
+/* 커플 */
 {id:'c1',cat:'커플',name:'백허그',tip:'뒤에서 살포시 안아요',
   figs:[
     fig({head:[44,22,8], n:[44,32],sL:[37,36],sR:[51,36], eL:[34,46],hL:[36,56], eR:[55,46],hR:[58,54],
@@ -278,7 +291,7 @@ const POSES=[
     fig({head:[58,24,8], n:[58,34],sL:[51,38],sR:[64,38], eL:[48,46],hL:[46,52], eR:[67,48],hR:[66,58],
       hip:[58,60],hpL:[54,61],hpR:[62,61], kL:[53,84],kR:[63,84], fL:[52,108],fR:[64,108]})
   ]},
-{id:'c5',cat:'커플',name:'손잡고 뒷모습',tip:'손 잡고 등 보이며 걸어가요',back:true,
+{id:'c5',cat:'커플',name:'손잡고 뒷모습',tip:'손 잡고 등 보이며 걸어가요',
   figs:[
     fig({head:[40,22,8], n:[40,32],sL:[34,36],sR:[47,36], eL:[31,46],hL:[44,56], eR:[51,46],hR:[44,56],
       hip:[40,60],hpL:[36,61],hpR:[44,61], kL:[35,84],kR:[45,84], fL:[34,108],fR:[46,108]}),
@@ -286,7 +299,7 @@ const POSES=[
       hip:[60,60],hpL:[56,61],hpR:[64,61], kL:[55,84],kR:[65,84], fL:[54,108],fR:[66,108]})
   ]},
 
-/* ===== 단체 (group) ===== */
+/* 단체 */
 {id:'g1',cat:'단체',name:'일렬로 서기',tip:'어깨 나란히 한 줄로!',
   figs:[
     fig({head:[26,26,6.5],n:[26,34],sL:[21,37],sR:[31,37],eL:[19,45],hL:[18,54],eR:[33,45],hR:[34,54],hip:[26,58],hpL:[23,59],hpR:[29,59],kL:[22,80],kR:[30,80],fL:[21,102],fR:[31,102]}),
@@ -312,10 +325,13 @@ const POSES=[
     fig({head:[68,26,7],n:[68,34],sL:[63,37],sR:[73,37],eL:[60,42],hL:[59,52],eR:[76,30],hR:[74,20],hip:[68,58],hpL:[65,59],hpR:[71,59],kL:[64,80],kR:[72,80],fL:[63,102],fR:[73,102]})
   ]},
 
-/* ===== 여행 (travel) ===== */
+/* 여행 */
 {id:'t1',cat:'여행',name:'랜드마크 손가락',tip:'멀리 명소를 손끝으로 가리켜요',
   figs:[fig({ eL:[38,46],hL:[36,58], eR:[64,40],hR:[74,30] })]},
-{id:'t2',cat:'여행',name:'풍경 보는 뒷모습',tip:'풍경을 향해 등 보이고 서요',back:true,
+{id:'t6',cat:'여행',name:'트월 (빙글)',tip:'팔다리 펴고 빙글! 움직임을 담아요',
+  figs:[fig({ n:[50,30],sL:[42,33],sR:[58,33], eL:[34,26],hL:[28,18], eR:[66,26],hR:[72,18],
+    hip:[50,58], hpL:[45,59],hpR:[55,59], kL:[40,80],kR:[60,78], fL:[34,100],fR:[66,96] })]},
+{id:'t2',cat:'여행',name:'풍경 보는 뒷모습',tip:'풍경을 향해 등 보이고 서요',
   figs:[fig({ eL:[40,46],hL:[40,58], eR:[60,46],hR:[60,58] })]},
 {id:'t3',cat:'여행',name:'점프샷',tip:'점프! 팔다리 활짝 펴기',
   figs:[fig({ head:[50,16,8], n:[50,26],sL:[42,30],sR:[58,30], eL:[34,22],hL:[28,14], eR:[66,22],hR:[72,14],
@@ -327,41 +343,33 @@ const POSES=[
   figs:[fig({ eL:[38,46],hL:[36,58], eR:[62,30],hR:[66,14] })]}
 ];
 
-/* ---- 카테고리 ---- */
 const CATS=['혼자','셀카','커플','단체','여행'];
+let curCat='혼자', curPose=POSES[0], flip=false, sizeStep=0, fillOn=true;
+const SIZES=[1,1.18,0.84];
+let facing='environment', stream=null;
+let gridOn=false, levelOn=false;
 
-/* ---- 상태 ---- */
-let curCat='혼자', curPose=POSES[0], flip=false, sizeStep=0;
-const SIZES=[1,1.18,0.84]; // 보통 / 크게 / 작게
-let facing='environment';
-let stream=null;
-
-/* ---- DOM ---- */
 const $=s=>document.querySelector(s);
 const overlay=$('#overlay'), cam=$('#cam');
 
-/* ---- SVG 그리기 ---- */
-function svgForPose(p, w=100, h=130, dash=true, color='#fff', strokeW=1.1){
-  const ns='http://www.w3.org/2000/svg';
+function svgForPose(p, dash=true, color='#fff', strokeW=1.1, withFill=false){
   let inner='';
-  const scale=SIZES[sizeStep];
-  const cx=50;
+  const scale=SIZES[sizeStep]; const cx=50;
   p.figs.forEach(j=>{
-    // 좌우반전 + 크기 변환
     const tx=v=> flip ? (cx*2 - v) : v;
     const sc=(x,y)=>[ cx + (tx(x)-cx)*scale, 65 + (y-65)*scale ];
-    // 머리
+    // fill underlay (반투명 채움) — 두꺼운 선 + 머리 채움
+    if(withFill){
+      const fc=getComputedStyle(document.body).getPropertyValue('--fillcol').trim()||'rgba(255,255,255,.15)';
+      const hd=j.head; const [hx,hy]=sc(hd[0],hd[1]);
+      inner+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${(hd[2]*scale).toFixed(1)}" fill="${fc}" stroke="none"/>`;
+      figurePaths(j).forEach(b=>{ const [x1,y1]=sc(b[0],b[1]); const [x2,y2]=sc(b[2],b[3]);
+        inner+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${fc}" stroke-width="${(strokeW*5.5).toFixed(1)}" stroke-linecap="round"/>`; });
+    }
     const hd=j.head; const [hx,hy]=sc(hd[0],hd[1]);
-    inner+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${(hd[2]*scale).toFixed(1)}" `+
-      `fill="none" stroke="${color}" stroke-width="${strokeW}" ${dash?'stroke-dasharray="3 2.4"':''}/>`;
-    // 뒷모습이면 얼굴점 생략, 정면이면 살짝 표시 안 함(깔끔하게)
-    // 뼈대
-    figurePaths(j).forEach(b=>{
-      const [x1,y1]=sc(b[0],b[1]); const [x2,y2]=sc(b[2],b[3]);
-      inner+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" `+
-        `stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round" ${dash?'stroke-dasharray="3 2.4"':''}/>`;
-    });
-    // 손 끝 점
+    inner+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${(hd[2]*scale).toFixed(1)}" fill="none" stroke="${color}" stroke-width="${strokeW}" ${dash?'stroke-dasharray="3 2.4"':''}/>`;
+    figurePaths(j).forEach(b=>{ const [x1,y1]=sc(b[0],b[1]); const [x2,y2]=sc(b[2],b[3]);
+      inner+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round" ${dash?'stroke-dasharray="3 2.4"':''}/>`; });
     ['hL','hR','fL','fR'].forEach(k=>{ if(j[k]){const[px,py]=sc(j[k][0],j[k][1]);
       inner+=`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${(1.1*scale).toFixed(1)}" fill="${color}"/>`; }});
   });
@@ -370,86 +378,71 @@ function svgForPose(p, w=100, h=130, dash=true, color='#fff', strokeW=1.1){
 
 function renderOverlay(){
   let g='';
-  // 3분할 격자 (옵션)
   if(gridOn){
-    g+=`<g stroke="rgba(255,255,255,.32)" stroke-width=".5">`+
-       `<line x1="33.3" y1="0" x2="33.3" y2="130"/><line x1="66.6" y1="0" x2="66.6" y2="130"/>`+
-       `<line x1="0" y1="43.3" x2="100" y2="43.3"/><line x1="0" y1="86.6" x2="100" y2="86.6"/></g>`;
+    g+=`<g stroke="rgba(255,255,255,.3)" stroke-width=".5"><line x1="33.3" y1="0" x2="33.3" y2="130"/>`+
+       `<line x1="66.6" y1="0" x2="66.6" y2="130"/><line x1="0" y1="43.3" x2="100" y2="43.3"/>`+
+       `<line x1="0" y1="86.6" x2="100" y2="86.6"/></g>`;
   }
-  // 포즈 점선 (그림자 라인 + 본선 → 어떤 배경에서도 보이게)
-  g+=`<g opacity=".9">`+ svgForPose(curPose,100,130,true,'rgba(0,0,0,.55)',2.0) +`</g>`;
-  g+=`<g>`+ svgForPose(curPose,100,130,true,'#fff',1.1) +`</g>`;
+  const dashCol=getComputedStyle(document.body).getPropertyValue('--dash').trim()||'#fff';
+  if(fillOn) g+=`<g>`+ svgForPose(curPose,false,'transparent',1.1,true) +`</g>`;
+  g+=`<g opacity=".85">`+ svgForPose(curPose,true,'rgba(0,0,0,.5)',2.0,false) +`</g>`;
+  g+=`<g>`+ svgForPose(curPose,true,dashCol,1.1,false) +`</g>`;
   overlay.innerHTML=g;
 }
 
-/* ---- 썸네일 ---- */
 function thumbSVG(p){
-  const saveFlip=flip, saveSize=sizeStep; flip=false; sizeStep=0;
-  const inner=svgForPose(p,100,130,false,'#fff',2.4);
-  flip=saveFlip; sizeStep=saveSize;
+  const sf=flip, ss=sizeStep; flip=false; sizeStep=0;
+  const inner=svgForPose(p,false,'#fff',2.4,false);
+  flip=sf; sizeStep=ss;
   return `<svg viewBox="10 5 80 120" preserveAspectRatio="xMidYMid meet">${inner}</svg>`;
 }
 
-/* ---- 카테고리/스트립 렌더 ---- */
 function buildCats(){
   $('#cats').innerHTML=CATS.map(c=>`<div class="chip ${c===curCat?'on':''}" data-c="${c}">${c}</div>`).join('');
   $('#cats').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{
-    curCat=el.dataset.c; const first=POSES.find(p=>p.cat===curCat); curPose=first;
-    buildCats(); buildStrip(); selectPose(curPose); 
+    curCat=el.dataset.c; curPose=POSES.find(p=>p.cat===curCat);
+    buildCats(); buildStrip(); selectPose(curPose);
   });
 }
 function buildStrip(){
   const list=POSES.filter(p=>p.cat===curCat);
   $('#strip').innerHTML=list.map(p=>`<div class="pcard ${p.id===curPose.id?'on':''}" data-id="${p.id}">${thumbSVG(p)}</div>`).join('');
-  $('#strip').querySelectorAll('.pcard').forEach(el=>el.onclick=()=>{
-    const p=POSES.find(x=>x.id===el.dataset.id); selectPose(p);
-  });
+  $('#strip').querySelectorAll('.pcard').forEach(el=>el.onclick=()=>selectPose(POSES.find(x=>x.id===el.dataset.id)));
 }
 function selectPose(p){
   curPose=p;
-  $('#poseName').textContent=p.name;
-  $('#poseTip').textContent=p.tip;
+  $('#poseName').textContent=p.name; $('#poseTip').textContent=p.tip;
   $('#strip').querySelectorAll('.pcard').forEach(el=>el.classList.toggle('on',el.dataset.id===p.id));
   renderOverlay();
 }
 
-/* ---- 토글 버튼 ---- */
-let gridOn=false, levelOn=false;
+/* 테마 전환 */
+$('#themes').querySelectorAll('.tbtn').forEach(el=>el.onclick=()=>{
+  document.body.className=el.dataset.t;
+  $('#themes').querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('on',b===el));
+  buildStrip(); renderOverlay(); introDemo();
+});
+
 $('#gridBtn').onclick=()=>{ gridOn=!gridOn; $('#gridBtn').classList.toggle('on',gridOn); renderOverlay(); };
 $('#levelBtn').onclick=()=>{ levelOn=!levelOn; $('#levelBtn').classList.toggle('on',levelOn);
-  $('#level').classList.toggle('show',levelOn); $('#levelDot').classList.toggle('show',levelOn);
-  if(levelOn) ensureOrientation(); };
+  $('#level')&&$('#level').classList.toggle('show',levelOn); if(levelOn) ensureOrientation(); };
+$('#fillBtn').onclick=()=>{ fillOn=!fillOn; $('#fillBtn').classList.toggle('on',fillOn); renderOverlay(); };
 $('#flipPose').onclick=()=>{ flip=!flip; renderOverlay(); };
 $('#sizeBtn').onclick=()=>{ sizeStep=(sizeStep+1)%SIZES.length; renderOverlay(); };
 
-/* ---- 수평계 ---- */
 function ensureOrientation(){
   if(typeof DeviceOrientationEvent!=='undefined' && DeviceOrientationEvent.requestPermission){
     DeviceOrientationEvent.requestPermission().catch(()=>{});
   }
 }
-window.addEventListener('deviceorientation',e=>{
-  if(!levelOn) return;
-  const g=Math.max(-30,Math.min(30,e.gamma||0));
-  const bar=$('#level .bar'); const dot=$('#levelDot');
-  bar.style.transform=`translate(-50%,-50%) rotate(${g}deg)`;
-  const ok=Math.abs(g)<2.2;
-  $('#level').classList.toggle('ok',ok); dot.classList.toggle('ok',ok);
-});
 
-/* ---- 카메라 ---- */
 async function startCam(){
   $('#err').classList.remove('show');
-  // https(보안 컨텍스트)가 아니면 카메라 권한 자체가 차단됨 — 미리 안내
-  if(!window.isSecureContext && location.protocol!=='http:'){
-    showCamError(true); return;
-  }
+  if(!window.isSecureContext && location.protocol!=='http:'){ showCamError(true); return; }
   try{
     if(stream) stream.getTracks().forEach(t=>t.stop());
-    stream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:facing,width:{ideal:1920},height:{ideal:1080}}, audio:false });
-    cam.srcObject=stream;
-    cam.classList.toggle('mirror', facing==='user');
+    stream=await navigator.mediaDevices.getUserMedia({ video:{facingMode:facing,width:{ideal:1920},height:{ideal:1080}}, audio:false });
+    cam.srcObject=stream; cam.classList.toggle('mirror', facing==='user');
   }catch(err){ showCamError(!window.isSecureContext); }
 }
 function showCamError(insecure){
@@ -469,66 +462,47 @@ function showCamError(insecure){
 $('#camFlip').onclick=()=>{ facing=facing==='user'?'environment':'user'; startCam(); };
 $('#retry').onclick=startCam;
 
-/* ---- 촬영 ---- */
 $('#shutter').onclick=()=>{
   if(!stream) return;
   const v=cam, c=document.createElement('canvas');
   const vw=v.videoWidth||1080, vh=v.videoHeight||1920;
-  c.width=vw; c.height=vh;
-  const ctx=c.getContext('2d');
+  c.width=vw; c.height=vh; const ctx=c.getContext('2d');
   if(facing==='user'){ ctx.translate(vw,0); ctx.scale(-1,1); }
   ctx.drawImage(v,0,0,vw,vh);
+  if(document.body.classList.contains('t-film')){ ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='rgba(120,84,30,.18)'; ctx.fillRect(0,0,vw,vh); }
   const data=c.toDataURL('image/jpeg',0.92);
   $('#shot').src=data; lastShot=data;
-  // 플래시 효과
   const fl=$('#flash'); fl.style.transition='none'; fl.style.opacity='.85';
   requestAnimationFrame(()=>{ fl.style.transition='opacity .4s'; fl.style.opacity='0'; });
   setTimeout(()=>$('#sheet').classList.add('show'),140);
 };
 let lastShot=null;
 $('#retake').onclick=()=>$('#sheet').classList.remove('show');
-
-/* ---- 저장 (토스 SAVE_IMAGE 패턴 + 브라우저 fallback) ---- */
 $('#save').onclick=()=>{
   if(!lastShot) return;
   const base64=lastShot.split(',')[1];
   try{
-    if(window.ReactNativeWebView){
-      window.ReactNativeWebView.postMessage(JSON.stringify({type:'SAVE_IMAGE',data:base64}));
-    }else if(window.parent && window.parent!==window){
-      window.parent.postMessage(JSON.stringify({type:'SAVE_IMAGE',data:base64}),'*');
-    }else{
-      const a=document.createElement('a'); a.href=lastShot;
-      a.download='포즈따라_'+Date.now()+'.jpg'; a.click();
-    }
-  }catch(e){
-    const a=document.createElement('a'); a.href=lastShot; a.download='posecam_'+Date.now()+'.jpg'; a.click();
-  }
+    if(window.ReactNativeWebView){ window.ReactNativeWebView.postMessage(JSON.stringify({type:'SAVE_IMAGE',data:base64})); }
+    else if(window.parent && window.parent!==window){ window.parent.postMessage(JSON.stringify({type:'SAVE_IMAGE',data:base64}),'*'); }
+    else{ const a=document.createElement('a'); a.href=lastShot; a.download='포즈따라_'+Date.now()+'.jpg'; a.click(); }
+  }catch(e){ const a=document.createElement('a'); a.href=lastShot; a.download='posecam_'+Date.now()+'.jpg'; a.click(); }
   $('#sheet').classList.remove('show');
 };
-// 토스 저장 결과 콜백
-window.addEventListener('message',ev=>{
-  try{ const m=typeof ev.data==='string'?JSON.parse(ev.data):ev.data;
-    if(m&&m.type==='SAVE_RESULT'){ /* 토스트 등 후처리 가능 */ } }catch(e){}
-});
+window.addEventListener('message',ev=>{ try{ const m=typeof ev.data==='string'?JSON.parse(ev.data):ev.data;
+  if(m&&m.type==='SAVE_RESULT'){} }catch(e){} });
+window.addEventListener('deviceorientation',e=>{ if(!levelOn) return; });
 
-/* ---- 인트로 데모 포즈 ---- */
-(function introDemo(){
+function introDemo(){
   const demo=document.querySelector('#intro .i-demo');
-  const sv=flip, ss=sizeStep; flip=false; sizeStep=0;
-  demo.innerHTML=svgForPose(POSES[0],100,130,true,'var(--accent)',2.2);
-  flip=sv; sizeStep=ss;
-})();
+  const sf=flip, ss=sizeStep; flip=false; sizeStep=0;
+  const ac=getComputedStyle(document.body).getPropertyValue('--accent').trim()||'#FF2E63';
+  demo.innerHTML=svgForPose(POSES[0],true,ac,2.0,false);
+  flip=sf; sizeStep=ss;
+}
 
-/* ---- 시작 ---- */
-$('#startBtn').onclick=async()=>{
-  $('#intro').classList.add('hide');
-  ensureOrientation();
-  await startCam();
-};
+$('#startBtn').onclick=async()=>{ $('#intro').classList.add('hide'); ensureOrientation(); await startCam(); };
 
-/* ---- 초기 렌더 ---- */
-buildCats(); buildStrip(); selectPose(POSES[0]);
+buildCats(); buildStrip(); selectPose(POSES[0]); introDemo();
 </script>
 </body>
 </html>
