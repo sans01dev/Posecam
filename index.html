@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>포즈따라 v0.2</title>
+<style>
+  :root{
+    --accent:#FF2E63;      /* hot pink-red signature */
+    --ok:#22D3A6;
+    --ink:#0E0E12;
+    --paper:#FFFFFF;
+    --dim:rgba(255,255,255,.62);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--ink);overflow:hidden;overscroll-behavior:none}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#fff;position:fixed;inset:0}
+
+  /* ---- camera stage ---- */
+  #stage{position:absolute;inset:0;background:#000;overflow:hidden}
+  #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+  #cam.mirror{transform:scaleX(-1)}
+  #overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+
+  /* ---- top bar ---- */
+  #top{position:absolute;top:0;left:0;right:0;padding:max(14px,env(safe-area-inset-top)) 16px 14px;
+    display:flex;align-items:center;gap:10px;z-index:6;
+    background:linear-gradient(to bottom,rgba(0,0,0,.55),transparent)}
+  .brand{font-weight:800;font-size:17px;letter-spacing:-.4px}
+  .brand b{color:var(--accent)}
+  .top-sp{flex:1}
+  .ic{width:42px;height:42px;border-radius:50%;background:rgba(20,20,26,.55);
+    border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;
+    backdrop-filter:blur(6px);cursor:pointer;font-size:18px}
+  .ic.on{background:var(--accent);border-color:var(--accent)}
+
+  /* ---- level meter ---- */
+  #level{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:140px;height:2px;z-index:5;pointer-events:none;opacity:.0;transition:opacity .2s}
+  #level.show{opacity:1}
+  #level .base{position:absolute;inset:0;background:rgba(255,255,255,.45);border-radius:2px}
+  #level .bar{position:absolute;left:50%;top:50%;width:140px;height:2px;
+    background:var(--accent);border-radius:2px;transform-origin:center}
+  #level.ok .bar{background:var(--ok)}
+  #levelDot{position:absolute;top:50%;left:50%;width:8px;height:8px;border-radius:50%;
+    transform:translate(-50%,-50%);background:#fff;z-index:5;opacity:0;transition:opacity .2s}
+  #levelDot.show{opacity:1}
+  #levelDot.ok{background:var(--ok);box-shadow:0 0 0 4px rgba(34,211,166,.25)}
+
+  /* ---- pose label ---- */
+  #poseTag{position:absolute;left:50%;top:calc(max(14px,env(safe-area-inset-top)) + 54px);
+    transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:4px;
+    pointer-events:none;text-align:center;width:86%}
+  #poseName{background:rgba(14,14,18,.5);backdrop-filter:blur(6px);
+    padding:6px 14px;border-radius:999px;font-weight:700;font-size:15px;
+    border:1px solid rgba(255,255,255,.14)}
+  #poseTip{font-size:12.5px;color:var(--dim);font-weight:500;
+    text-shadow:0 1px 3px rgba(0,0,0,.6);line-height:1.4}
+
+  /* ---- category chips ---- */
+  #cats{position:absolute;left:0;right:0;bottom:calc(168px + env(safe-area-inset-bottom));
+    z-index:6;display:flex;gap:8px;overflow-x:auto;padding:0 16px;scrollbar-width:none}
+  #cats::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;padding:8px 15px;border-radius:999px;font-size:13.5px;font-weight:700;
+    background:rgba(20,20,26,.55);border:1px solid rgba(255,255,255,.16);
+    backdrop-filter:blur(6px);cursor:pointer;white-space:nowrap;transition:.15s}
+  .chip.on{background:#fff;color:var(--ink);border-color:#fff}
+
+  /* ---- pose strip ---- */
+  #strip{position:absolute;left:0;right:0;bottom:calc(108px + env(safe-area-inset-bottom));
+    z-index:6;display:flex;gap:9px;overflow-x:auto;padding:0 16px;scrollbar-width:none}
+  #strip::-webkit-scrollbar{display:none}
+  .pcard{flex:0 0 auto;width:46px;height:52px;border-radius:12px;cursor:pointer;
+    background:rgba(20,20,26,.5);border:1px solid rgba(255,255,255,.16);
+    backdrop-filter:blur(6px);display:grid;place-items:center;transition:.15s;padding:5px}
+  .pcard svg{width:100%;height:100%}
+  .pcard.on{border-color:var(--accent);background:rgba(255,46,99,.18);box-shadow:0 0 0 1px var(--accent)}
+
+  /* ---- bottom controls ---- */
+  #ctrls{position:absolute;left:0;right:0;bottom:0;z-index:7;
+    padding:0 30px calc(20px + env(safe-area-inset-bottom));
+    height:calc(96px + env(safe-area-inset-bottom));
+    display:flex;align-items:center;justify-content:space-between;
+    background:linear-gradient(to top,rgba(0,0,0,.55),transparent)}
+  .side{width:54px;height:54px;border-radius:50%;background:rgba(20,20,26,.6);
+    border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;
+    backdrop-filter:blur(6px);cursor:pointer;font-size:22px}
+  #shutter{width:74px;height:74px;border-radius:50%;border:5px solid #fff;
+    background:var(--accent);cursor:pointer;position:relative;
+    box-shadow:0 6px 24px rgba(255,46,99,.4);transition:transform .08s}
+  #shutter:active{transform:scale(.92)}
+
+  /* ---- result sheet ---- */
+  #sheet{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.78);
+    display:none;flex-direction:column;justify-content:flex-end;backdrop-filter:blur(4px)}
+  #sheet.show{display:flex}
+  .sheet-in{background:#15151b;border-radius:24px 24px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));
+    max-height:88vh;display:flex;flex-direction:column;gap:14px}
+  .sheet-grip{width:38px;height:4px;border-radius:99px;background:#3a3a44;margin:0 auto}
+  #shot{width:100%;border-radius:16px;object-fit:contain;max-height:58vh;background:#000}
+  .sheet-row{display:flex;gap:10px}
+  .btn{flex:1;padding:15px;border-radius:14px;font-size:15.5px;font-weight:800;border:none;cursor:pointer}
+  .btn.g{background:var(--accent);color:#fff}
+  .btn.o{background:#26262e;color:#fff}
+
+  /* ---- intro ---- */
+  #intro{position:absolute;inset:0;z-index:40;background:var(--ink);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px;text-align:center}
+  #intro.hide{display:none}
+  .i-logo{font-size:30px;font-weight:900;letter-spacing:-1px}
+  .i-logo b{color:var(--accent)}
+  .i-sub{color:var(--dim);font-size:15px;line-height:1.7;font-weight:500}
+  .i-demo{width:120px;height:140px;margin:6px 0}
+  #intro .btn.g{max-width:240px;width:100%}
+
+  .err{position:absolute;inset:0;z-index:30;display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;padding:34px;text-align:center;background:var(--ink)}
+  .err.show{display:flex}
+  .err p{color:var(--dim);font-size:14.5px;line-height:1.6}
+  .err .btn{flex:0 0 auto;width:100%;max-width:220px}
+  .err .hint{margin-top:6px;font-size:12.5px;color:#7a7a86;line-height:1.6;
+    background:#18181f;border:1px solid #26262e;border-radius:12px;padding:12px 14px;max-width:300px}
+  .err .hint b{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <video id="cam" autoplay playsinline muted></video>
+  <svg id="overlay" viewBox="0 0 100 130" preserveAspectRatio="xMidYMid slice"></svg>
+  <div id="flash"></div>
+</div>
+
+<!-- level meter -->
+<div id="level"><div class="base"></div><div class="bar"></div></div>
+<div id="levelDot"></div>
+
+<!-- top bar -->
+<div id="top">
+  <div class="brand">포즈<b>따라</b></div>
+  <div class="top-sp"></div>
+  <div class="ic" id="gridBtn" title="격자">⊞</div>
+  <div class="ic" id="levelBtn" title="수평">◇</div>
+  <div class="ic" id="flipPose" title="좌우반전">⇄</div>
+</div>
+
+<!-- pose label -->
+<div id="poseTag">
+  <div id="poseName">전신 풀샷</div>
+  <div id="poseTip">점선에 몸을 맞춰 서보세요</div>
+</div>
+
+<!-- categories -->
+<div id="cats"></div>
+<!-- pose thumbnails -->
+<div id="strip"></div>
+
+<!-- bottom controls -->
+<div id="ctrls">
+  <div class="side" id="sizeBtn" title="크기">⤢</div>
+  <button id="shutter" aria-label="촬영"></button>
+  <div class="side" id="camFlip" title="카메라전환">⟲</div>
+</div>
+
+<!-- result sheet -->
+<div id="sheet">
+  <div class="sheet-in">
+    <div class="sheet-grip"></div>
+    <img id="shot" alt="촬영 결과">
+    <div class="sheet-row">
+      <button class="btn o" id="retake">다시 찍기</button>
+      <button class="btn g" id="save">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- intro -->
+<div id="intro">
+  <div class="i-logo">포즈<b>따라</b></div>
+  <svg class="i-demo" viewBox="0 0 100 130"></svg>
+  <div class="i-sub">점선 가이드에 몸을 맞추면<br>누구나 인생샷.<br>유행 포즈 25종, 그냥 따라만 하세요.</div>
+  <button class="btn g" id="startBtn">카메라 켜기</button>
+</div>
+
+<!-- camera error -->
+<div class="err" id="err">
+  <div style="font-size:34px">📷</div>
+  <div style="font-weight:800;font-size:17px" id="errTitle">카메라를 켤 수 없어요</div>
+  <p id="errDesc">설정에서 카메라 권한을 허용한 뒤<br>다시 들어와 주세요.</p>
+  <div class="hint" id="errHint" style="display:none"></div>
+  <button class="btn g" id="retry">다시 시도</button>
+</div>
+
+<script>
+/* =========================================================
+   포즈따라 (posecam) v0.1  —  single-file pose guide camera
+   좌표계: 0~100 (x) / 0~130 (y) 정규화. SVG viewBox 동일.
+   ========================================================= */
+
+/* ---- 관절 헬퍼 ---- 한 사람의 막대 figure를 path 문자열로 ---- */
+function figurePaths(j){
+  // j: {head:[x,y,r], n,sL,sR,eL,eR,hL,hR, hip, hpL,hpR, kL,kR, fL,fR}
+  const L=[]; // [x1,y1,x2,y2] 뼈대
+  const add=(a,b)=>{ if(j[a]&&j[b]) L.push([j[a][0],j[a][1],j[b][0],j[b][1]]); };
+  add('n','sL'); add('n','sR'); add('n','hip');
+  add('sL','eL'); add('eL','hL'); add('sR','eR'); add('eR','hR');
+  add('hip','hpL'); add('hip','hpR');
+  add('hpL','kL'); add('kL','fL'); add('hpR','kR'); add('kR','fR');
+  return L;
+}
+
+/* ---- 25개 포즈 데이터 ----
+   상반신 위주(셀카/커플 일부)는 다리 키 생략 → 다리 안 그림.
+   여러 명은 figures 배열로. */
+const STAND={ n:[50,30], sL:[42,34], sR:[58,34], hip:[50,60],
+  hpL:[45,61], hpR:[55,61], kL:[44,84], kR:[56,84], fL:[43,108], fR:[57,108] };
+
+function fig(o){ return Object.assign({head:[50,20,9]}, JSON.parse(JSON.stringify(STAND)), o); }
+
+const POSES=[
+/* ===== 혼자 (solo) ===== */
+{id:'s1',cat:'혼자',name:'전신 풀샷',tip:'점선에 몸을 맞춰 똑바로 서요',
+  figs:[fig({ eL:[37,46], hL:[35,58], eR:[63,46], hR:[65,58] })]},
+{id:'s2',cat:'혼자',name:'로우앵글 다리길게',tip:'폰을 아래에서 위로! 다리가 길어 보여요',
+  figs:[fig({ head:[50,14,7], n:[50,24], sL:[43,28],sR:[57,28], eL:[39,40],hL:[37,52], eR:[61,40],hR:[63,52],
+    hip:[50,56], hpL:[46,57],hpR:[54,57], kL:[45,86],kR:[55,86], fL:[44,118],fR:[56,118] })]},
+{id:'s3',cat:'혼자',name:'뒷모습',tip:'등을 보이고 먼 곳을 바라봐요',
+  figs:[fig({ head:[50,20,9], eL:[40,46],hL:[40,58], eR:[60,46],hR:[60,58] })],back:true},
+{id:'s4',cat:'혼자',name:'앉은 포즈',tip:'무릎을 세우고 편하게 앉아요',
+  figs:[fig({ n:[50,38],sL:[43,42],sR:[57,42], eL:[40,52],hL:[44,60], eR:[60,52],hR:[56,60],
+    hip:[50,66], hpL:[45,67],hpR:[55,67], kL:[40,80],kR:[60,80], fL:[44,96],fR:[56,96] })]},
+{id:'s5',cat:'혼자',name:'벽에 기대기',tip:'한 발을 벽에 대고 살짝 기대요',
+  figs:[fig({ n:[52,30],sL:[44,34],sR:[60,34], eL:[42,46],hL:[44,58], eR:[64,44],hR:[66,54],
+    hip:[52,60], hpL:[47,61],hpR:[57,61], kL:[46,84],kR:[60,80], fL:[45,108],fR:[64,104] })]},
+{id:'s6',cat:'혼자',name:'걷는 척',tip:'한 발 내딛고 자연스럽게 시선은 옆으로',
+  figs:[fig({ eL:[38,46],hL:[36,56], eR:[62,46],hR:[66,52],
+    kL:[42,84],kR:[58,82], fL:[38,108],fR:[64,106] })]},
+
+/* ===== 셀카 (selfie) — 상반신 크게 ===== */
+{id:'f1',cat:'셀카',name:'기본 브이',tip:'얼굴 옆에 브이! 살짝 턱 당기기',
+  figs:[{head:[50,34,15], n:[50,58], sL:[34,66],sR:[66,66], eL:[30,80],hL:[40,52], eR:[70,80],hR:[60,52]}]},
+{id:'f2',cat:'셀카',name:'옆얼굴 손하트',tip:'고개 살짝 돌리고 손가락 하트',
+  figs:[{head:[46,34,15], n:[48,58], sL:[34,66],sR:[64,66], eL:[32,78],hL:[34,50], eR:[68,78],hR:[64,82]}]},
+{id:'f3',cat:'셀카',name:'머리 위 큰 하트',tip:'양팔로 머리 위에 큰 하트를',
+  figs:[{head:[50,42,14], n:[50,64], sL:[36,70],sR:[64,70], eL:[26,52],hL:[44,30], eR:[74,52],hR:[56,30]}]},
+{id:'f4',cat:'셀카',name:'볼 하트',tip:'두 손을 볼에 모아 귀엽게',
+  figs:[{head:[50,36,15], n:[50,60], sL:[35,68],sR:[65,68], eL:[40,58],hL:[44,44], eR:[60,58],hR:[56,44]}]},
+{id:'f5',cat:'셀카',name:'턱 괴기',tip:'한 손으로 턱을 괴고 시크하게',
+  figs:[{head:[50,36,15], n:[50,60], sL:[35,68],sR:[65,68], eL:[42,62],hL:[47,48], eR:[68,80],hR:[66,86]}]},
+
+/* ===== 커플 (couple) — 두 명 ===== */
+{id:'c1',cat:'커플',name:'백허그',tip:'뒤에서 살포시 안아요',
+  figs:[
+    fig({head:[44,22,8], n:[44,32],sL:[37,36],sR:[51,36], eL:[34,46],hL:[36,56], eR:[55,46],hR:[58,54],
+      hip:[44,60],hpL:[40,61],hpR:[48,61], kL:[39,84],kR:[49,84], fL:[38,108],fR:[50,108]}),
+    fig({head:[58,18,8], n:[58,28],sL:[51,32],sR:[65,32], eL:[46,42],hL:[40,52], eR:[69,42],hR:[60,52],
+      hip:[58,56],hpL:[54,57],hpR:[62,57], kL:[53,82],kR:[63,82], fL:[52,108],fR:[64,108]})
+  ]},
+{id:'c2',cat:'커플',name:'어깨동무',tip:'어깨에 팔 두르고 나란히',
+  figs:[
+    fig({head:[40,22,8], n:[40,32],sL:[33,36],sR:[47,36], eL:[30,46],hL:[31,58], eR:[51,42],hR:[58,38],
+      hip:[40,60],hpL:[36,61],hpR:[44,61], kL:[35,84],kR:[45,84], fL:[34,108],fR:[46,108]}),
+    fig({head:[60,22,8], n:[60,32],sL:[53,36],sR:[67,36], eL:[49,42],hL:[42,38], eR:[70,46],hR:[71,58],
+      hip:[60,60],hpL:[56,61],hpR:[64,61], kL:[55,84],kR:[65,84], fL:[54,108],fR:[66,108]})
+  ]},
+{id:'c3',cat:'커플',name:'손하트 합체',tip:'각자 한 손씩 모아 하트 완성',
+  figs:[
+    fig({head:[40,22,8], n:[40,32],sL:[33,36],sR:[47,36], eL:[30,46],hL:[31,58], eR:[51,44],hR:[55,52],
+      hip:[40,60],hpL:[36,61],hpR:[44,61], kL:[35,84],kR:[45,84], fL:[34,108],fR:[46,108]}),
+    fig({head:[60,22,8], n:[60,32],sL:[53,36],sR:[67,36], eL:[49,44],hL:[45,52], eR:[70,46],hR:[69,58],
+      hip:[60,60],hpL:[56,61],hpR:[64,61], kL:[55,84],kR:[65,84], fL:[54,108],fR:[66,108]})
+  ]},
+{id:'c4',cat:'커플',name:'마주보기',tip:'서로 바라보며 이마 가까이',
+  figs:[
+    fig({head:[42,24,8], n:[42,34],sL:[36,38],sR:[49,38], eL:[33,48],hL:[34,58], eR:[52,46],hR:[54,52],
+      hip:[42,60],hpL:[38,61],hpR:[46,61], kL:[37,84],kR:[47,84], fL:[36,108],fR:[48,108]}),
+    fig({head:[58,24,8], n:[58,34],sL:[51,38],sR:[64,38], eL:[48,46],hL:[46,52], eR:[67,48],hR:[66,58],
+      hip:[58,60],hpL:[54,61],hpR:[62,61], kL:[53,84],kR:[63,84], fL:[52,108],fR:[64,108]})
+  ]},
+{id:'c5',cat:'커플',name:'손잡고 뒷모습',tip:'손 잡고 등 보이며 걸어가요',back:true,
+  figs:[
+    fig({head:[40,22,8], n:[40,32],sL:[34,36],sR:[47,36], eL:[31,46],hL:[44,56], eR:[51,46],hR:[44,56],
+      hip:[40,60],hpL:[36,61],hpR:[44,61], kL:[35,84],kR:[45,84], fL:[34,108],fR:[46,108]}),
+    fig({head:[60,22,8], n:[60,32],sL:[53,36],sR:[66,36], eL:[49,46],hL:[56,56], eR:[69,46],hR:[64,56],
+      hip:[60,60],hpL:[56,61],hpR:[64,61], kL:[55,84],kR:[65,84], fL:[54,108],fR:[66,108]})
+  ]},
+
+/* ===== 단체 (group) ===== */
+{id:'g1',cat:'단체',name:'일렬로 서기',tip:'어깨 나란히 한 줄로!',
+  figs:[
+    fig({head:[26,26,6.5],n:[26,34],sL:[21,37],sR:[31,37],eL:[19,45],hL:[18,54],eR:[33,45],hR:[34,54],hip:[26,58],hpL:[23,59],hpR:[29,59],kL:[22,80],kR:[30,80],fL:[21,102],fR:[31,102]}),
+    fig({head:[42,24,6.5],n:[42,32],sL:[37,35],sR:[47,35],eL:[35,43],hL:[34,52],eR:[49,43],hR:[50,52],hip:[42,56],hpL:[39,57],hpR:[45,57],kL:[38,78],kR:[46,78],fL:[37,100],fR:[47,100]}),
+    fig({head:[58,24,6.5],n:[58,32],sL:[53,35],sR:[63,35],eL:[51,43],hL:[50,52],eR:[65,43],hR:[66,52],hip:[58,56],hpL:[55,57],hpR:[61,57],kL:[54,78],kR:[62,78],fL:[53,100],fR:[63,100]}),
+    fig({head:[74,26,6.5],n:[74,34],sL:[69,37],sR:[79,37],eL:[67,45],hL:[66,54],eR:[81,45],hR:[82,54],hip:[74,58],hpL:[71,59],hpR:[77,59],kL:[70,80],kR:[78,80],fL:[69,102],fR:[79,102]})
+  ]},
+{id:'g2',cat:'단체',name:'계단식 구도',tip:'키·높이 다르게 층층이 서요',
+  figs:[
+    fig({head:[28,20,6.5],n:[28,28],sL:[23,31],sR:[33,31],eL:[21,39],hL:[20,48],eR:[35,39],hR:[36,48],hip:[28,52],hpL:[25,53],hpR:[31,53],kL:[24,74],kR:[32,74],fL:[23,96],fR:[33,96]}),
+    fig({head:[48,30,7],n:[48,38],sL:[43,41],sR:[53,41],eL:[41,49],hL:[40,58],eR:[55,49],hR:[56,58],hip:[48,62],hpL:[45,63],hpR:[51,63],kL:[44,84],kR:[52,84],fL:[43,106],fR:[53,106]}),
+    fig({head:[70,40,7],n:[70,48],sL:[65,51],sR:[75,51],eL:[63,59],hL:[62,68],eR:[77,59],hR:[78,68],hip:[70,72],hpL:[67,73],hpR:[73,73],kL:[66,94],kR:[74,94],fL:[65,116],fR:[75,116]})
+  ]},
+{id:'g3',cat:'단체',name:'동시 점프',tip:'셋 세고 다 같이 점프!',
+  figs:[
+    fig({head:[30,22,6.5],n:[30,30],sL:[25,33],sR:[35,33],eL:[21,26],hL:[18,18],eR:[39,26],hR:[42,18],hip:[30,54],hpL:[27,55],hpR:[33,55],kL:[24,72],kR:[36,72],fL:[22,86],fR:[38,86]}),
+    fig({head:[55,16,6.5],n:[55,24],sL:[50,27],sR:[60,27],eL:[46,20],hL:[43,12],eR:[64,20],hR:[67,12],hip:[55,48],hpL:[52,49],hpR:[58,49],kL:[49,66],kR:[61,66],fL:[47,80],fR:[63,80]}),
+    fig({head:[78,24,6.5],n:[78,32],sL:[73,35],sR:[83,35],eL:[69,28],hL:[66,20],eR:[87,28],hR:[90,20],hip:[78,56],hpL:[75,57],hpR:[81,57],kL:[72,74],kR:[84,74],fL:[70,88],fR:[86,88]})
+  ]},
+{id:'g4',cat:'단체',name:'브이 모음',tip:'다 같이 얼굴 옆 브이!',
+  figs:[
+    fig({head:[32,26,7],n:[32,34],sL:[27,37],sR:[37,37],eL:[24,30],hL:[26,20],eR:[40,42],hR:[41,52],hip:[32,58],hpL:[29,59],hpR:[35,59],kL:[28,80],kR:[36,80],fL:[27,102],fR:[37,102]}),
+    fig({head:[68,26,7],n:[68,34],sL:[63,37],sR:[73,37],eL:[60,42],hL:[59,52],eR:[76,30],hR:[74,20],hip:[68,58],hpL:[65,59],hpR:[71,59],kL:[64,80],kR:[72,80],fL:[63,102],fR:[73,102]})
+  ]},
+
+/* ===== 여행 (travel) ===== */
+{id:'t1',cat:'여행',name:'랜드마크 손가락',tip:'멀리 명소를 손끝으로 가리켜요',
+  figs:[fig({ eL:[38,46],hL:[36,58], eR:[64,40],hR:[74,30] })]},
+{id:'t2',cat:'여행',name:'풍경 보는 뒷모습',tip:'풍경을 향해 등 보이고 서요',back:true,
+  figs:[fig({ eL:[40,46],hL:[40,58], eR:[60,46],hR:[60,58] })]},
+{id:'t3',cat:'여행',name:'점프샷',tip:'점프! 팔다리 활짝 펴기',
+  figs:[fig({ head:[50,16,8], n:[50,26],sL:[42,30],sR:[58,30], eL:[34,22],hL:[28,14], eR:[66,22],hR:[72,14],
+    hip:[50,50],hpL:[46,51],hpR:[54,51], kL:[40,66],kR:[60,66], fL:[34,80],fR:[66,80] })]},
+{id:'t4',cat:'여행',name:'길따라 원근',tip:'길 가운데 서서 소실점을 살려요',
+  figs:[fig({ head:[50,18,7], n:[50,28],sL:[44,32],sR:[56,32], eL:[40,44],hL:[38,56], eR:[60,44],hR:[62,56],
+    hip:[50,58],hpL:[47,59],hpR:[53,59], kL:[46,82],kR:[54,82], fL:[46,106],fR:[54,106] })]},
+{id:'t5',cat:'여행',name:'하늘로 손뻗기',tip:'한 손을 하늘 높이 뻗어요',
+  figs:[fig({ eL:[38,46],hL:[36,58], eR:[62,30],hR:[66,14] })]}
+];
+
+/* ---- 카테고리 ---- */
+const CATS=['혼자','셀카','커플','단체','여행'];
+
+/* ---- 상태 ---- */
+let curCat='혼자', curPose=POSES[0], flip=false, sizeStep=0;
+const SIZES=[1,1.18,0.84]; // 보통 / 크게 / 작게
+let facing='environment';
+let stream=null;
+
+/* ---- DOM ---- */
+const $=s=>document.querySelector(s);
+const overlay=$('#overlay'), cam=$('#cam');
+
+/* ---- SVG 그리기 ---- */
+function svgForPose(p, w=100, h=130, dash=true, color='#fff', strokeW=1.1){
+  const ns='http://www.w3.org/2000/svg';
+  let inner='';
+  const scale=SIZES[sizeStep];
+  const cx=50;
+  p.figs.forEach(j=>{
+    // 좌우반전 + 크기 변환
+    const tx=v=> flip ? (cx*2 - v) : v;
+    const sc=(x,y)=>[ cx + (tx(x)-cx)*scale, 65 + (y-65)*scale ];
+    // 머리
+    const hd=j.head; const [hx,hy]=sc(hd[0],hd[1]);
+    inner+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${(hd[2]*scale).toFixed(1)}" `+
+      `fill="none" stroke="${color}" stroke-width="${strokeW}" ${dash?'stroke-dasharray="3 2.4"':''}/>`;
+    // 뒷모습이면 얼굴점 생략, 정면이면 살짝 표시 안 함(깔끔하게)
+    // 뼈대
+    figurePaths(j).forEach(b=>{
+      const [x1,y1]=sc(b[0],b[1]); const [x2,y2]=sc(b[2],b[3]);
+      inner+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" `+
+        `stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round" ${dash?'stroke-dasharray="3 2.4"':''}/>`;
+    });
+    // 손 끝 점
+    ['hL','hR','fL','fR'].forEach(k=>{ if(j[k]){const[px,py]=sc(j[k][0],j[k][1]);
+      inner+=`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${(1.1*scale).toFixed(1)}" fill="${color}"/>`; }});
+  });
+  return inner;
+}
+
+function renderOverlay(){
+  let g='';
+  // 3분할 격자 (옵션)
+  if(gridOn){
+    g+=`<g stroke="rgba(255,255,255,.32)" stroke-width=".5">`+
+       `<line x1="33.3" y1="0" x2="33.3" y2="130"/><line x1="66.6" y1="0" x2="66.6" y2="130"/>`+
+       `<line x1="0" y1="43.3" x2="100" y2="43.3"/><line x1="0" y1="86.6" x2="100" y2="86.6"/></g>`;
+  }
+  // 포즈 점선 (그림자 라인 + 본선 → 어떤 배경에서도 보이게)
+  g+=`<g opacity=".9">`+ svgForPose(curPose,100,130,true,'rgba(0,0,0,.55)',2.0) +`</g>`;
+  g+=`<g>`+ svgForPose(curPose,100,130,true,'#fff',1.1) +`</g>`;
+  overlay.innerHTML=g;
+}
+
+/* ---- 썸네일 ---- */
+function thumbSVG(p){
+  const saveFlip=flip, saveSize=sizeStep; flip=false; sizeStep=0;
+  const inner=svgForPose(p,100,130,false,'#fff',2.4);
+  flip=saveFlip; sizeStep=saveSize;
+  return `<svg viewBox="10 5 80 120" preserveAspectRatio="xMidYMid meet">${inner}</svg>`;
+}
+
+/* ---- 카테고리/스트립 렌더 ---- */
+function buildCats(){
+  $('#cats').innerHTML=CATS.map(c=>`<div class="chip ${c===curCat?'on':''}" data-c="${c}">${c}</div>`).join('');
+  $('#cats').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{
+    curCat=el.dataset.c; const first=POSES.find(p=>p.cat===curCat); curPose=first;
+    buildCats(); buildStrip(); selectPose(curPose); 
+  });
+}
+function buildStrip(){
+  const list=POSES.filter(p=>p.cat===curCat);
+  $('#strip').innerHTML=list.map(p=>`<div class="pcard ${p.id===curPose.id?'on':''}" data-id="${p.id}">${thumbSVG(p)}</div>`).join('');
+  $('#strip').querySelectorAll('.pcard').forEach(el=>el.onclick=()=>{
+    const p=POSES.find(x=>x.id===el.dataset.id); selectPose(p);
+  });
+}
+function selectPose(p){
+  curPose=p;
+  $('#poseName').textContent=p.name;
+  $('#poseTip').textContent=p.tip;
+  $('#strip').querySelectorAll('.pcard').forEach(el=>el.classList.toggle('on',el.dataset.id===p.id));
+  renderOverlay();
+}
+
+/* ---- 토글 버튼 ---- */
+let gridOn=false, levelOn=false;
+$('#gridBtn').onclick=()=>{ gridOn=!gridOn; $('#gridBtn').classList.toggle('on',gridOn); renderOverlay(); };
+$('#levelBtn').onclick=()=>{ levelOn=!levelOn; $('#levelBtn').classList.toggle('on',levelOn);
+  $('#level').classList.toggle('show',levelOn); $('#levelDot').classList.toggle('show',levelOn);
+  if(levelOn) ensureOrientation(); };
+$('#flipPose').onclick=()=>{ flip=!flip; renderOverlay(); };
+$('#sizeBtn').onclick=()=>{ sizeStep=(sizeStep+1)%SIZES.length; renderOverlay(); };
+
+/* ---- 수평계 ---- */
+function ensureOrientation(){
+  if(typeof DeviceOrientationEvent!=='undefined' && DeviceOrientationEvent.requestPermission){
+    DeviceOrientationEvent.requestPermission().catch(()=>{});
+  }
+}
+window.addEventListener('deviceorientation',e=>{
+  if(!levelOn) return;
+  const g=Math.max(-30,Math.min(30,e.gamma||0));
+  const bar=$('#level .bar'); const dot=$('#levelDot');
+  bar.style.transform=`translate(-50%,-50%) rotate(${g}deg)`;
+  const ok=Math.abs(g)<2.2;
+  $('#level').classList.toggle('ok',ok); dot.classList.toggle('ok',ok);
+});
+
+/* ---- 카메라 ---- */
+async function startCam(){
+  $('#err').classList.remove('show');
+  // https(보안 컨텍스트)가 아니면 카메라 권한 자체가 차단됨 — 미리 안내
+  if(!window.isSecureContext && location.protocol!=='http:'){
+    showCamError(true); return;
+  }
+  try{
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:facing,width:{ideal:1920},height:{ideal:1080}}, audio:false });
+    cam.srcObject=stream;
+    cam.classList.toggle('mirror', facing==='user');
+  }catch(err){ showCamError(!window.isSecureContext); }
+}
+function showCamError(insecure){
+  const hint=$('#errHint');
+  if(insecure){
+    $('#errTitle').textContent='이렇게 열면 카메라가 안 돼요';
+    $('#errDesc').innerHTML='파일을 직접 열면 보안상<br>카메라를 켤 수 없어요.';
+    hint.style.display='block';
+    hint.innerHTML='<b>https 주소</b>로 열어야 작동해요.<br>토스 앱 안에서는 정상 작동하고,<br>테스트는 GitHub Pages 같은<br>https 주소에 올려서 열어주세요.';
+  }else{
+    $('#errTitle').textContent='카메라를 켤 수 없어요';
+    $('#errDesc').innerHTML='설정에서 카메라 권한을 허용한 뒤<br>다시 들어와 주세요.';
+    hint.style.display='none';
+  }
+  $('#err').classList.add('show');
+}
+$('#camFlip').onclick=()=>{ facing=facing==='user'?'environment':'user'; startCam(); };
+$('#retry').onclick=startCam;
+
+/* ---- 촬영 ---- */
+$('#shutter').onclick=()=>{
+  if(!stream) return;
+  const v=cam, c=document.createElement('canvas');
+  const vw=v.videoWidth||1080, vh=v.videoHeight||1920;
+  c.width=vw; c.height=vh;
+  const ctx=c.getContext('2d');
+  if(facing==='user'){ ctx.translate(vw,0); ctx.scale(-1,1); }
+  ctx.drawImage(v,0,0,vw,vh);
+  const data=c.toDataURL('image/jpeg',0.92);
+  $('#shot').src=data; lastShot=data;
+  // 플래시 효과
+  const fl=$('#flash'); fl.style.transition='none'; fl.style.opacity='.85';
+  requestAnimationFrame(()=>{ fl.style.transition='opacity .4s'; fl.style.opacity='0'; });
+  setTimeout(()=>$('#sheet').classList.add('show'),140);
+};
+let lastShot=null;
+$('#retake').onclick=()=>$('#sheet').classList.remove('show');
+
+/* ---- 저장 (토스 SAVE_IMAGE 패턴 + 브라우저 fallback) ---- */
+$('#save').onclick=()=>{
+  if(!lastShot) return;
+  const base64=lastShot.split(',')[1];
+  try{
+    if(window.ReactNativeWebView){
+      window.ReactNativeWebView.postMessage(JSON.stringify({type:'SAVE_IMAGE',data:base64}));
+    }else if(window.parent && window.parent!==window){
+      window.parent.postMessage(JSON.stringify({type:'SAVE_IMAGE',data:base64}),'*');
+    }else{
+      const a=document.createElement('a'); a.href=lastShot;
+      a.download='포즈따라_'+Date.now()+'.jpg'; a.click();
+    }
+  }catch(e){
+    const a=document.createElement('a'); a.href=lastShot; a.download='posecam_'+Date.now()+'.jpg'; a.click();
+  }
+  $('#sheet').classList.remove('show');
+};
+// 토스 저장 결과 콜백
+window.addEventListener('message',ev=>{
+  try{ const m=typeof ev.data==='string'?JSON.parse(ev.data):ev.data;
+    if(m&&m.type==='SAVE_RESULT'){ /* 토스트 등 후처리 가능 */ } }catch(e){}
+});
+
+/* ---- 인트로 데모 포즈 ---- */
+(function introDemo(){
+  const demo=document.querySelector('#intro .i-demo');
+  const sv=flip, ss=sizeStep; flip=false; sizeStep=0;
+  demo.innerHTML=svgForPose(POSES[0],100,130,true,'var(--accent)',2.2);
+  flip=sv; sizeStep=ss;
+})();
+
+/* ---- 시작 ---- */
+$('#startBtn').onclick=async()=>{
+  $('#intro').classList.add('hide');
+  ensureOrientation();
+  await startCam();
+};
+
+/* ---- 초기 렌더 ---- */
+buildCats(); buildStrip(); selectPose(POSES[0]);
+</script>
+</body>
+</html>
