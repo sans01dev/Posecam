@@ -3,172 +3,166 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>내 주변 시원한 곳 찾기 v0.18</title>
+<title>무더위 대피 지도 v0.1</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
-  body { background: #EEF4F6; overflow: hidden; }
+  body { background: #EAF1F8; overflow: hidden; }
 
   :root {
-    --primary: #0F9CB5; --primary-dark: #0B7A8F; --primary-light: #6FD6E4;
-    --ink: #1B2B30; --sub: #6A828A; --line: #E4EBEE;
-    --shadow: 0 4px 16px rgba(20,40,50,.12); --shadow-lg: 0 12px 36px rgba(20,40,50,.16);
+    --blue: #2563EB; --blue-dark: #1E40AF; --blue-light: #93C5FD;
+    --alert: #F97316; --alert-dark: #EA580C;
+    --ink: #17233A; --sub: #5E6E88; --line: #E3E9F2;
+    --shadow: 0 4px 16px rgba(30,50,90,.14); --shadow-lg: 0 12px 36px rgba(30,50,90,.18);
   }
 
-  #app { width: 100%; height: 100%; display: flex; flex-direction: column;
-         padding: 16px 12px calc(14px + env(safe-area-inset-bottom)); gap: 12px; }
+  #app { position: relative; width: 100%; height: 100%; }
 
-  #appHeader { flex-shrink: 0; padding: 16px 18px; border-radius: 18px;
-               background: linear-gradient(135deg, #60A5FA, #3B82F6); box-shadow: var(--shadow); }
-  #appHeader .sub { font-size: 13px; font-weight: 700; color: #EAF3FF; letter-spacing: .3px; }
-  #appHeader .main { font-size: 23px; font-weight: 900; color: #fff; margin-top: 3px; letter-spacing: -.6px; }
-
-  /* 필터 (2줄 고정 그리드) */
-  #filters { flex-shrink: 0; display: grid; grid-template-columns: repeat(4, 1fr);
-             gap: 7px; padding: 0 4px 2px; }
-  .chip {
-    padding: 8px 3px; border-radius: 12px; border: 1.5px solid var(--line);
-    background: #fff; color: var(--sub); font-size: 11.5px; font-weight: 800;
-    display: flex; align-items: center; justify-content: center; gap: 2px;
-    cursor: pointer; transition: all .15s; white-space: nowrap;
-  }
-  .chip.on { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: var(--shadow); }
-  .chip .e { font-size: 12px; }
-
-  #card { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
-          background: #fff; border: 1px solid var(--line); border-radius: 22px;
-          box-shadow: var(--shadow-lg); overflow: hidden; }
-  #header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; flex-shrink: 0;
-            border-bottom: 1px solid var(--line); background: #fff; z-index: 6; }
-  #header .mapico { display: flex; align-items: center; }
-  #header .htxt { font-size: 18px; font-weight: 800; color: var(--ink); }
-  #header .cnt { margin-left: auto; font-size: 14px; font-weight: 700; color: var(--primary-dark); }
-
-  #mapWrap { position: relative; flex: 1; min-height: 0; background: #D6EEF3; }
-  #map { width: 100%; height: 100%; }
+  /* ===== 지도 (전체 화면) ===== */
+  #map { position: absolute; inset: 0; background: #D6E4F0; }
 
   #nokey { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
            align-items: center; justify-content: center; gap: 12px; padding: 30px; text-align: center;
-           color: var(--sub); background: #E8F7FA; }
+           color: var(--sub); background: #EAF1F8; }
   #nokey .big { font-size: 40px; }
   #nokey .t { font-size: 15px; font-weight: 700; line-height: 1.55; color: var(--ink); }
-  #nokey code { background:#fff; padding:2px 6px; border-radius:8px; color:var(--primary-dark); font-weight:700; }
+  #nokey code { background:#fff; padding:2px 6px; border-radius:8px; color:var(--blue-dark); font-weight:700; }
 
-  #loading { position: absolute; inset: 0; z-index: 8; display: none; align-items: center; justify-content: center;
-             background: rgba(232,247,250,.6); font-size: 15px; font-weight: 800; color: var(--primary-dark); }
-  #loading.on { display: flex; }
+  /* ===== 상단 오버레이 (헤더 + 필터) ===== */
+  #top { position: absolute; top: 0; left: 0; right: 0; z-index: 16;
+         padding: 12px 12px 0; }
 
-  /* 위치 허용 안내 배너 */
-  #locbar { position: absolute; left: 12px; right: 12px; top: 12px; z-index: 16;
-            display: none; align-items: center; gap: 10px;
-            background: #FFF4E5; border: 1.5px solid #FFD9A0; border-radius: 14px;
-            padding: 11px 14px; box-shadow: var(--shadow); }
+  /* 폭염 배너 헤더 */
+  #header { background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+            border-radius: 18px; box-shadow: var(--shadow-lg); padding: 13px 16px; }
+  #header .row1 { display: flex; align-items: center; gap: 7px; }
+  #header .badge { display: inline-flex; align-items: center; gap: 4px;
+                   background: var(--alert); color: #fff; font-size: 12px; font-weight: 800;
+                   padding: 3px 9px; border-radius: 8px; }
+  #header .temp { font-size: 13px; font-weight: 700; color: #DCE9FF; margin-left: auto; }
+  #header .title { font-size: 21px; font-weight: 900; color: #fff; margin-top: 6px; letter-spacing: -.5px; }
+
+  /* 필터 (2줄 그리드) */
+  #filters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 10px; }
+  .chip { padding: 9px 4px; border-radius: 12px; border: none;
+          background: rgba(255,255,255,.94); color: var(--sub); font-size: 13px; font-weight: 800;
+          display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;
+          box-shadow: var(--shadow); transition: all .15s; white-space: nowrap; }
+  .chip.on { background: var(--blue); color: #fff; }
+  .chip .e { font-size: 14px; }
+  .chip .in { font-size: 9px; font-weight: 800; padding: 1px 4px; border-radius: 5px;
+              background: #DCE9FF; color: var(--blue-dark); }
+  .chip.on .in { background: rgba(255,255,255,.25); color: #fff; }
+
+  /* ===== 우측 버튼 ===== */
+  #binoc { position: absolute; right: 16px; top: 210px; z-index: 15; width: 50px; height: 50px;
+           border-radius: 50%; background: #17233A; border: none; box-shadow: 0 6px 18px rgba(0,0,0,.28);
+           display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  #binoc:active { transform: scale(.94); }
+  #gps { position: absolute; right: 16px; top: 270px; z-index: 15; width: 46px; height: 46px;
+         border-radius: 50%; background: #fff; border: none; box-shadow: var(--shadow);
+         display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700;
+         line-height: 1; color: var(--blue); cursor: pointer; }
+  #gps:active { transform: scale(.94); }
+
+  #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 8;
+             display: none; background: #fff; padding: 12px 20px; border-radius: 14px; box-shadow: var(--shadow-lg);
+             font-size: 15px; font-weight: 800; color: var(--blue-dark); }
+  #loading.on { display: block; }
+
+  /* 위치 허용 배너 */
+  #locbar { position: absolute; left: 12px; right: 12px; bottom: 200px; z-index: 17;
+            display: none; align-items: center; gap: 10px; background: #FFF4E5;
+            border: 1.5px solid #FFD9A0; border-radius: 14px; padding: 11px 14px; box-shadow: var(--shadow); }
   #locbar.on { display: flex; }
   #locbar .lt { flex: 1; font-size: 13px; font-weight: 700; color: #8A5A12; line-height: 1.45; }
   #locbar .lb { flex-shrink: 0; padding: 8px 12px; border: none; border-radius: 10px;
-                background: #F59E0B; color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; }
-  #locbar .lb:active { background: #D97F06; }
+                background: var(--alert); color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; }
 
-  /* 지도 하단 문구 */
-  #footnote { flex-shrink: 0; text-align: center; font-size: 12px; font-weight: 600;
-              color: var(--sub); padding: 2px 8px 0; line-height: 1.5; }
-
-  #binoc { position: absolute; right: 16px; top: 16px; z-index: 15; width: 50px; height: 50px;
-           border-radius: 50%; background: #1B2B30; border: none; box-shadow: 0 6px 18px rgba(0,0,0,.28);
-           display: flex; align-items: center; justify-content: center; cursor: pointer; }
-  #binoc:active { transform: scale(.94); }
-  #gps { position: absolute; right: 16px; top: 74px; z-index: 15; width: 46px; height: 46px;
-         border-radius: 50%; background: #fff; border: none; box-shadow: var(--shadow);
-         display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700;
-         line-height: 1; color: var(--primary); cursor: pointer; }
-  #gps:active { transform: scale(.94); }
-
-  #cards { position: absolute; left: 0; right: 0; bottom: 14px; z-index: 15; display: flex; gap: 12px;
+  /* ===== 하단 겹침 카드 ===== */
+  #cards { position: absolute; left: 0; right: 0; bottom: 16px; z-index: 15; display: flex; gap: 12px;
            overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
            -webkit-overflow-scrolling: touch; padding: 0 16px; scrollbar-width: none; }
   #cards::-webkit-scrollbar { display: none; }
 
-  .rest { scroll-snap-align: center; flex: 0 0 calc(100% - 44px); background: #fff; border-radius: 16px;
-          box-shadow: 0 8px 26px rgba(20,40,50,.20); padding: 11px 14px; display: flex; align-items: center; gap: 12px; }
-  .thumb { width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
-           background: linear-gradient(135deg, var(--primary-light), var(--primary));
-           display: flex; align-items: center; justify-content: center; font-size: 24px; }
+  .card { scroll-snap-align: center; flex: 0 0 calc(100% - 40px); background: #fff; border-radius: 18px;
+          box-shadow: var(--shadow-lg); padding: 13px 15px; display: flex; align-items: center; gap: 13px; }
+  .thumb { width: 50px; height: 50px; border-radius: 13px; flex-shrink: 0; display: flex;
+           align-items: center; justify-content: center; font-size: 25px; }
+  .thumb.indoor { background: linear-gradient(135deg, var(--blue-light), var(--blue)); }
+  .thumb.outdoor { background: linear-gradient(135deg, #86EFAC, #22C55E); }
   .info { flex: 1; min-width: 0; }
   .nameRow { display: flex; align-items: baseline; gap: 8px; }
-  .name { font-size: 16px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden;
+  .name { font-size: 17px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden;
           text-overflow: ellipsis; flex: 1; min-width: 0; }
-  .km { font-size: 14px; font-weight: 800; color: var(--primary-dark); flex-shrink: 0; }
-  .travel { margin-top: 4px; display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
-  .tline { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--ink); white-space: nowrap; }
-  .tline .lb { color: var(--sub); font-weight: 600; }
-  .go { flex-shrink: 0; width: 40px; height: 40px; border-radius: 11px; border: none;
-        background: var(--primary); color: #fff; font-size: 18px; font-weight: 800; cursor: pointer; }
-  .go:active { background: var(--primary-dark); }
+  .km { font-size: 14px; font-weight: 800; color: var(--blue-dark); flex-shrink: 0; }
+  .sub2 { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+  .tag { font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 7px; white-space: nowrap; }
+  .tag.indoor { background: #DCE9FF; color: var(--blue-dark); }
+  .tag.outdoor { background: #DCFCE7; color: #15803D; }
+  .walk { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .walk .lb { color: var(--sub); font-weight: 600; }
+  .go { flex-shrink: 0; width: 42px; height: 42px; border-radius: 12px; border: none;
+        background: var(--blue); color: #fff; font-size: 19px; font-weight: 800; cursor: pointer; }
+  .go:active { background: var(--blue-dark); }
 
-  .empty { scroll-snap-align: center; flex: 0 0 calc(100% - 44px); background: #fff; border-radius: 18px;
-           box-shadow: 0 8px 26px rgba(20,40,50,.20); padding: 22px 18px; text-align: center; }
+  .empty { scroll-snap-align: center; flex: 0 0 calc(100% - 40px); background: #fff; border-radius: 18px;
+           box-shadow: var(--shadow-lg); padding: 20px 18px; text-align: center; }
   .empty .et { font-size: 15px; font-weight: 800; color: var(--ink); }
   .empty .es { font-size: 13px; font-weight: 600; color: var(--sub); margin-top: 6px; line-height: 1.5; }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="appHeader">
-    <div class="sub">🧊 냉면·빙수·수영장·쉼터</div>
-    <div class="main">내 주변 시원한 곳 찾기</div>
+  <div id="map"></div>
+  <div id="nokey">
+    <div class="big">🗺️</div>
+    <div class="t">JavaScript 키를 <code>KAKAO_KEY</code>에 입력</div>
   </div>
 
-  <div id="filters">
-    <button class="chip on" data-kw="냉면,밀면,냉국수" data-t="냉음식" data-e="🍜"><span class="e">🍜</span>냉음식</button>
-    <button class="chip" data-kw="냉면" data-t="냉면" data-e="🥶"><span class="e">🥶</span>냉면</button>
-    <button class="chip" data-kw="밀면" data-t="밀면" data-e="🍜"><span class="e">🍜</span>밀면</button>
-    <button class="chip" data-kw="빙수" data-t="빙수" data-e="🍧"><span class="e">🍧</span>빙수</button>
-    <button class="chip" data-kw="카페" data-t="카페" data-e="🧊"><span class="e">🧊</span>카페</button>
-    <button class="chip" data-kw="수영장" data-t="수영장" data-e="🏊" data-cat="cat"><span class="e">🏊</span>수영장</button>
-    <button class="chip" data-kw="계곡" data-t="계곡" data-e="💧" data-cat="cat"><span class="e">💧</span>계곡</button>
-    <button class="chip" data-kw="무더위쉼터" data-t="무더위쉼터" data-e="🏠" data-cat="cat"><span class="e">🏠</span>무더위쉼터</button>
-  </div>
-
-  <div id="card">
+  <div id="top">
     <div id="header">
-      <span class="mapico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B2B30" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21 1 6"></polygon><line x1="8" y1="3" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="21"></line></svg></span>
-      <span class="htxt" id="cardTitle">내 주변 냉음식</span>
-      <span class="cnt" id="cardCnt"></span>
+      <div class="row1">
+        <span class="badge" id="alertBadge">🌡️ 폭염주의보</span>
+        <span class="temp" id="tempTxt">체감 —°</span>
+      </div>
+      <div class="title">무더위 대피 지도</div>
     </div>
-    <div id="mapWrap">
-      <div id="map"></div>
-      <button id="binoc" title="전체 보기"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5.5h3l1 2v7a2.5 2.5 0 0 1-5 0v-6.5a2 2 0 0 1 0-2.5z"></path><path d="M17 5.5h-3l-1 2v7a2.5 2.5 0 0 0 5 0v-6.5a2 2 0 0 0 0-2.5z"></path><line x1="11" y1="11" x2="13" y2="11"></line></svg></button>
-      <button id="gps" title="내 위치">◎</button>
-      <div id="loading">🔍 검색 중…</div>
-      <div id="locbar">
-        <div class="lt">📍 위치를 켜면 내 주변 시원한 곳을 찾아드려요</div>
-        <button class="lb" id="locBtn">위치 켜기</button>
-      </div>
-      <div id="nokey">
-        <div class="big">🗺️</div>
-        <div class="t">JavaScript 키를 <code>KAKAO_KEY</code>에 입력</div>
-      </div>
-      <div id="cards"></div>
+    <div id="filters">
+      <button class="chip on" data-kw="무더위쉼터" data-t="무더위쉼터" data-e="🏠" data-io="indoor"><span class="e">🏠</span>쉼터<span class="in">실내</span></button>
+      <button class="chip" data-kw="도서관" data-t="도서관" data-e="📚" data-io="indoor"><span class="e">📚</span>도서관<span class="in">실내</span></button>
+      <button class="chip" data-kw="대형마트" data-t="마트" data-e="🏪" data-io="indoor"><span class="e">🏪</span>마트<span class="in">실내</span></button>
+      <button class="chip" data-kw="지하철역" data-t="지하철" data-e="🚇" data-io="indoor"><span class="e">🚇</span>지하철<span class="in">실내</span></button>
+      <button class="chip" data-kw="공원" data-t="그늘·공원" data-e="🌳" data-io="outdoor"><span class="e">🌳</span>그늘<span class="in">야외</span></button>
+      <button class="chip" data-kw="분수대,물놀이" data-t="분수대" data-e="⛲" data-io="outdoor"><span class="e">⛲</span>분수대<span class="in">야외</span></button>
     </div>
   </div>
 
-  <div id="footnote">🧊 지도 중심 3km 반경 · 지도를 움직이면 그 지역을 다시 찾아요</div>
+  <button id="binoc" title="전체 보기"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5.5h3l1 2v7a2.5 2.5 0 0 1-5 0v-6.5a2 2 0 0 1 0-2.5z"></path><path d="M17 5.5h-3l-1 2v7a2.5 2.5 0 0 0 5 0v-6.5a2 2 0 0 0 0-2.5z"></path><line x1="11" y1="11" x2="13" y2="11"></line></svg></button>
+  <button id="gps" title="내 위치">◎</button>
+  <div id="loading">🔍 대피소 찾는 중…</div>
+  <div id="locbar">
+    <div class="lt">📍 위치를 켜면 가까운 대피소를 찾아드려요</div>
+    <button class="lb" id="locBtn">위치 켜기</button>
+  </div>
+
+  <div id="cards"></div>
 </div>
 
 <script>
 /* =========================================================
-   시원한 여름나기 v0.7
-   - 카카오 SDK services 라이브러리로 실시간 키워드 검색
-   - 필터 누르면 내 주변에서 해당 장소 전부 검색 → 핀
-   - REST 키 불필요 (JavaScript 키 + libraries=services)
+   무더위 대피 지도 v0.1
+   - 지도 전체 + 폭염 배너 + 실내/야외 대피소 필터
+   - 카카오 SDK services 실시간 검색 (지도 중심 3km)
+   - 앱 시작 시 1회 내 위치로, 이후 드래그하면 그 지역 재검색
    ========================================================= */
   const KAKAO_KEY = 'b2e63e83f6f056f7c4d525b8b503b686';
-  const DEFAULT = { lat: 34.876, lng: 128.692 }; // 위치 못잡을 때 기본(아주동)
+  const DEFAULT = { lat: 34.876, lng: 128.692 };
 
   const $ = id => document.getElementById(id);
   let map, ps, myMarker, markers = [], curIdx = -1, myLoc = null;
-  let list = [], filter = { kw:'냉면,밀면,냉국수', t:'냉음식', e:'🍜' };
-  let RED, BLUE;
+  let list = [], filter = { kw:'무더위쉼터', t:'무더위쉼터', e:'🏠', io:'indoor' };
+  let PIN_IN, PIN_OUT, PIN_SEL;
   let ignoreUntil = 0, searchTimer = null;
 
   function suppressIdle(ms){ ignoreUntil = Date.now() + (ms || 900); }
@@ -177,20 +171,18 @@
   function distKm(a,b,c,d){const R=6371,r=x=>x*Math.PI/180;const dLat=r(c-a),dLng=r(d-b);
     const t=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLng/2)**2;
     return R*2*Math.atan2(Math.sqrt(t),Math.sqrt(1-t));}
-  function estCar(km){return Math.max(1,Math.round(km*1.3/40*60));}
   function estWalk(km){return Math.max(1,Math.round(km*1.2/4*60));}
   function fmtMin(m){return m>=60?Math.floor(m/60)+'시간 '+(m%60)+'분':m+'분';}
   function fmtDist(km){return km<1?Math.round(km*1000)+'m':km.toFixed(1)+'km';}
 
-  const CAR_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B7A8F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13"></path><path d="M5 13h14v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-4z"></path><circle cx="7.5" cy="15.5" r="1"></circle><circle cx="16.5" cy="15.5" r="1"></circle></svg>';
-  const WALK_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6A828A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.6"></circle><path d="M13 7l-2 4 3 2 1 5"></path><path d="M11 11l-3 1-2 4"></path><path d="M14 13l3 1"></path></svg>';
+  const WALK_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5E6E88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.6"></circle><path d="M13 7l-2 4 3 2 1 5"></path><path d="M11 11l-3 1-2 4"></path><path d="M14 13l3 1"></path></svg>';
 
   function pinImage(color){
     const svg='<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44">'+
       '<path d="M17 0C8 0 1 7 1 16c0 11 16 28 16 28s16-17 16-28C33 7 26 0 17 0z" fill="'+color+'" stroke="#fff" stroke-width="2"/>'+
       '<circle cx="17" cy="16" r="6" fill="#fff"/></svg>';
     return new kakao.maps.MarkerImage('data:image/svg+xml;base64,'+btoa(svg),
-      new kakao.maps.Size(20,26),{offset:new kakao.maps.Point(10,26)});
+      new kakao.maps.Size(22,28),{offset:new kakao.maps.Point(11,28)});
   }
 
   function boot(){
@@ -205,95 +197,85 @@
     $('nokey').style.display='none';
     map=new kakao.maps.Map($('map'),{center:new kakao.maps.LatLng(DEFAULT.lat,DEFAULT.lng),level:5});
     ps=new kakao.maps.services.Places();
-    RED=pinImage('#E63946'); BLUE=pinImage('#2563EB');
+    PIN_IN=pinImage('#2563EB');   // 실내=파랑
+    PIN_OUT=pinImage('#22C55E');  // 야외=초록
+    PIN_SEL=pinImage('#F97316');  // 선택=주황
 
-    // 지도 멈출 때마다 자동 재검색 (프로그램 이동은 제외)
-    kakao.maps.event.addListener(map, 'idle', ()=>{
-      if(Date.now() < ignoreUntil) return;
+    kakao.maps.event.addListener(map,'idle',()=>{
+      if(Date.now()<ignoreUntil) return;
       scheduleSearch();
     });
 
-    // 앱 켜질 때 딱 한 번 내 위치로 이동 → 그 지역 검색 (그 뒤론 안 움직임)
+    // 시작 시 1회 내 위치로
     locate(false, ()=>{
-      if(myLoc){ suppressIdle(1200); map.setCenter(new kakao.maps.LatLng(myLoc.lat, myLoc.lng)); }
+      if(myLoc){ suppressIdle(1200); map.setCenter(new kakao.maps.LatLng(myLoc.lat,myLoc.lng)); }
       scheduleSearch();
     });
   }
 
-  // 키워드 검색 (지도 중심 기준 3km)
   function search(){
-    if(!map || !ps) return;
+    if(!map||!ps) return;
     $('loading').classList.add('on');
-    $('cardCnt').textContent='';
     markers.forEach(m=>m.setMap(null)); markers=[]; curIdx=-1; list=[];
 
-    const c = map.getCenter();
-    const center = { lat: c.getLat(), lng: c.getLng() };
-    const keywords = filter.kw.split(',');
-    let done = 0, collected = [];
+    const c=map.getCenter();
+    const center={lat:c.getLat(),lng:c.getLng()};
+    const keywords=filter.kw.split(',');
+    let done=0, collected=[];
 
     keywords.forEach(kw=>{
-      ps.keywordSearch(kw.trim(), (data, status)=>{
+      ps.keywordSearch(kw.trim(),(data,status)=>{
         if(status===kakao.maps.services.Status.OK){
-          data.forEach(d=>{
-            collected.push({
-              name:d.place_name,
-              lat:+d.y, lng:+d.x,
-              cat:(d.category_name||'').split('>').pop().trim(),
-              addr:d.road_address_name||d.address_name||''
-            });
-          });
+          data.forEach(d=>collected.push({
+            name:d.place_name, lat:+d.y, lng:+d.x,
+            addr:d.road_address_name||d.address_name||'',
+            io:filter.io
+          }));
         }
-        if(++done===keywords.length) finishSearch(collected, center);
-      }, {
-        location: new kakao.maps.LatLng(center.lat, center.lng),
-        radius: 3000, // 3km 반경
-        sort: kakao.maps.services.SortBy.DISTANCE
-      });
+        if(++done===keywords.length) finishSearch(collected);
+      },{location:new kakao.maps.LatLng(center.lat,center.lng),radius:3000,sort:kakao.maps.services.SortBy.DISTANCE});
     });
   }
 
-  function finishSearch(collected, center){
-    // 중복 제거 (이름+좌표)
-    const seen = new Set();
-    list = collected.filter(p=>{
-      const k=p.name+p.lat.toFixed(4)+p.lng.toFixed(4);
-      if(seen.has(k)) return false; seen.add(k); return true;
-    });
-    // 거리순 정렬: 항상 내 위치(myLoc) 기준. 위치 없으면 지도중심.
-    const c = myLoc || center || {lat:map.getCenter().getLat(), lng:map.getCenter().getLng()};
+  function finishSearch(collected){
+    const seen=new Set();
+    list=collected.filter(p=>{const k=p.name+p.lat.toFixed(4)+p.lng.toFixed(4);
+      if(seen.has(k))return false;seen.add(k);return true;});
+    const c=myLoc||{lat:map.getCenter().getLat(),lng:map.getCenter().getLng()};
     list.sort((a,b)=>distKm(c.lat,c.lng,a.lat,a.lng)-distKm(c.lat,c.lng,b.lat,b.lng));
-    list = list.slice(0, 30); // 최대 30곳
+    list=list.slice(0,30);
 
     $('loading').classList.remove('on');
-    $('cardTitle').textContent='내 주변 '+filter.t;
-    $('cardCnt').textContent = list.length ? filter.e+' '+list.length+'곳' : '';
 
-    // 마커 (지도 이동 없이 그리기만 → idle 재검색 안 됨)
     list.forEach((p,i)=>{
-      const m=new kakao.maps.Marker({map,position:new kakao.maps.LatLng(p.lat,p.lng),title:p.name,image:RED});
+      const m=new kakao.maps.Marker({map,position:new kakao.maps.LatLng(p.lat,p.lng),title:p.name,
+        image: p.io==='outdoor'?PIN_OUT:PIN_IN});
       kakao.maps.event.addListener(m,'click',()=>focusPlace(i,true));
       markers.push(m);
     });
-
     buildCards();
   }
 
   function buildCards(){
     const wrap=$('cards'); wrap.innerHTML='';
     if(!list.length){
-      wrap.innerHTML='<div class="empty"><div class="et">'+filter.e+' 검색 결과가 없어요</div>'+
-        '<div class="es">주변 10km 안에<br>'+filter.t+' 정보가 없네요</div></div>';
+      wrap.innerHTML='<div class="empty"><div class="et">'+filter.e+' 주변에 없어요</div>'+
+        '<div class="es">3km 안에 '+filter.t+'가<br>검색되지 않았어요</div></div>';
       return;
     }
+    const ioClass = filter.io==='outdoor'?'outdoor':'indoor';
+    const ioLabel = filter.io==='outdoor'?'야외':'실내';
     list.forEach((p,i)=>{
       const c=document.createElement('div');
-      c.className='rest'; c.dataset.idx=i;
+      c.className='card'; c.dataset.idx=i;
       c.innerHTML=
-        '<div class="thumb">'+filter.e+'</div>'+
+        '<div class="thumb '+ioClass+'">'+filter.e+'</div>'+
         '<div class="info">'+
           '<div class="nameRow"><div class="name">'+p.name+'</div><div class="km" data-km="'+i+'">–</div></div>'+
-          '<div class="travel" data-tidx="'+i+'"><div class="tline lb">📍 위치 확인 중…</div></div>'+
+          '<div class="sub2">'+
+            '<span class="tag '+ioClass+'">'+ioLabel+'</span>'+
+            '<span class="walk" data-w="'+i+'"><span class="lb">위치 확인 중</span></span>'+
+          '</div>'+
         '</div>'+
         '<button class="go" title="길찾기">→</button>';
       c.querySelector('.go').onclick=e=>{e.stopPropagation();openKakao(p);};
@@ -301,7 +283,7 @@
     });
     let t;
     wrap.addEventListener('scroll',()=>{clearTimeout(t);t=setTimeout(()=>{
-      const el=wrap.querySelector('.rest'); if(!el) return;
+      const el=wrap.querySelector('.card'); if(!el)return;
       const idx=Math.round(wrap.scrollLeft/(el.offsetWidth+12));
       if(idx!==curIdx) focusPlace(idx,false);
     },90);});
@@ -310,12 +292,10 @@
 
   function updateTravel(){
     if(!myLoc) return;
-    document.querySelectorAll('.travel').forEach(el=>{
-      const p=list[+el.dataset.tidx]; if(!p) return;
+    document.querySelectorAll('.walk').forEach(el=>{
+      const p=list[+el.dataset.w]; if(!p) return;
       const km=distKm(myLoc.lat,myLoc.lng,p.lat,p.lng);
-      el.innerHTML=
-        '<div class="tline">'+CAR_SVG+'<span class="lb">차량</span> '+fmtMin(estCar(km))+'</div>'+
-        '<div class="tline">'+WALK_SVG+'<span class="lb">도보</span> '+fmtMin(estWalk(km))+'</div>';
+      el.innerHTML=WALK_SVG+'<span class="lb">도보</span> '+fmtMin(estWalk(km));
     });
     document.querySelectorAll('.km').forEach(el=>{
       const p=list[+el.dataset.km]; if(!p) return;
@@ -325,13 +305,15 @@
 
   function focusPlace(i,scrollCard){
     if(i<0||i>=list.length) return;
-    if(curIdx>=0&&markers[curIdx]) markers[curIdx].setImage(RED);
-    curIdx=i; markers[i].setImage(BLUE);
+    if(curIdx>=0&&markers[curIdx]){
+      markers[curIdx].setImage(list[curIdx].io==='outdoor'?PIN_OUT:PIN_IN);
+    }
+    curIdx=i; markers[i].setImage(PIN_SEL);
     const p=list[i];
-    suppressIdle(1000); // 카드 선택 이동은 재검색 안 함 (여러 번 이동 대응)
+    suppressIdle(1000);
     map.panTo(new kakao.maps.LatLng(p.lat,p.lng));
     if(scrollCard){
-      const wrap=$('cards'), card=wrap.querySelector('.rest[data-idx="'+i+'"]');
+      const wrap=$('cards'), card=wrap.querySelector('.card[data-idx="'+i+'"]');
       if(card) wrap.scrollTo({left:card.offsetLeft-16,behavior:'smooth'});
     }
   }
@@ -340,7 +322,7 @@
     const b=new kakao.maps.LatLngBounds();
     list.forEach(p=>b.extend(new kakao.maps.LatLng(p.lat,p.lng)));
     if(myLoc) b.extend(new kakao.maps.LatLng(myLoc.lat,myLoc.lng));
-    suppressIdle(1000); // 전체보기 이동은 재검색 안 함
+    suppressIdle(1000);
     map.setBounds(b);
   }
 
@@ -353,9 +335,9 @@
       if(myMarker) myMarker.setMap(null);
       myMarker=new kakao.maps.Marker({map,position:loc,zIndex:1,
         image:new kakao.maps.MarkerImage('data:image/svg+xml;base64,'+btoa(
-          '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"><circle cx="11" cy="11" r="6" fill="#2563EB" stroke="#fff" stroke-width="3"/></svg>'),
+          '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"><circle cx="11" cy="11" r="6" fill="#E63946" stroke="#fff" stroke-width="3"/></svg>'),
           new kakao.maps.Size(22,22),{offset:new kakao.maps.Point(11,11)})});
-      if(moveMap){ suppressIdle(1000); map.panTo(loc); } // 지도 이동은 명시적으로 요청할 때만
+      if(moveMap){ suppressIdle(1000); map.panTo(loc); }
       updateTravel();
       if(cb) cb();
     },()=>{ $('locbar').classList.add('on'); if(cb)cb(); },{enableHighAccuracy:true,timeout:8000});
@@ -365,13 +347,13 @@
     ch.onclick=()=>{
       document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
       ch.classList.add('on');
-      filter={kw:ch.dataset.kw,t:ch.dataset.t,e:ch.dataset.e};
+      filter={kw:ch.dataset.kw,t:ch.dataset.t,e:ch.dataset.e,io:ch.dataset.io};
       search();
     };
   });
 
   $('binoc').onclick=()=>{ if(list.length) fitAll(); };
-  $('gps').onclick=()=>locate(true, ()=>{}); // GPS 버튼 누를 때만 지도 이동
+  $('gps').onclick=()=>locate(true, ()=>{});
   $('locBtn').onclick=()=>locate(true, ()=>{ scheduleSearch(); });
 
   function openKakao(p){
