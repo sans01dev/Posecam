@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>내 주변 시원한 곳 찾기 v0.15</title>
+<title>내 주변 시원한 곳 찾기 v0.16</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
@@ -152,7 +152,7 @@
     </div>
   </div>
 
-  <div id="footnote">🧊 내 위치 10km 반경 · 거리·시간은 직선 기준 추정치예요</div>
+  <div id="footnote">🧊 지도 중심 3km 반경 · 지도를 움직이면 그 지역을 다시 찾아요</div>
 </div>
 
 <script>
@@ -169,6 +169,9 @@
   let map, ps, myMarker, markers = [], curIdx = -1, myLoc = null;
   let list = [], filter = { kw:'냉면,밀면,냉국수', t:'냉음식', e:'🍜' };
   let RED, BLUE;
+  let ignoreIdle = false, searchTimer = null;
+
+  function scheduleSearch(){ clearTimeout(searchTimer); searchTimer = setTimeout(search, 400); }
 
   function distKm(a,b,c,d){const R=6371,r=x=>x*Math.PI/180;const dLat=r(c-a),dLng=r(d-b);
     const t=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLng/2)**2;
@@ -202,17 +205,29 @@
     map=new kakao.maps.Map($('map'),{center:new kakao.maps.LatLng(DEFAULT.lat,DEFAULT.lng),level:5});
     ps=new kakao.maps.services.Places();
     RED=pinImage('#E63946'); BLUE=pinImage('#2563EB');
-    // 먼저 위치부터 잡고 검색
-    locate(true, ()=>search());
+
+    // 지도 멈출 때마다 자동 재검색 (프로그램 이동은 제외)
+    kakao.maps.event.addListener(map, 'idle', ()=>{
+      if(ignoreIdle){ ignoreIdle=false; return; }
+      scheduleSearch();
+    });
+
+    // 내 위치로 이동 → idle 발생 → 자동 검색
+    locate(true, ()=>{
+      if(myLoc){ map.setCenter(new kakao.maps.LatLng(myLoc.lat, myLoc.lng)); }
+      scheduleSearch();
+    });
   }
 
-  // 키워드 검색 (내 위치 기준)
+  // 키워드 검색 (지도 중심 기준 3km)
   function search(){
+    if(!map || !ps) return;
     $('loading').classList.add('on');
     $('cardCnt').textContent='';
     markers.forEach(m=>m.setMap(null)); markers=[]; curIdx=-1; list=[];
 
-    const center = myLoc || DEFAULT;
+    const c = map.getCenter();
+    const center = { lat: c.getLat(), lng: c.getLng() };
     const keywords = filter.kw.split(',');
     let done = 0, collected = [];
 
@@ -228,24 +243,24 @@
             });
           });
         }
-        if(++done===keywords.length) finishSearch(collected);
+        if(++done===keywords.length) finishSearch(collected, center);
       }, {
         location: new kakao.maps.LatLng(center.lat, center.lng),
-        radius: 10000, // 10km 반경
+        radius: 3000, // 3km 반경
         sort: kakao.maps.services.SortBy.DISTANCE
       });
     });
   }
 
-  function finishSearch(collected){
+  function finishSearch(collected, center){
     // 중복 제거 (이름+좌표)
     const seen = new Set();
     list = collected.filter(p=>{
       const k=p.name+p.lat.toFixed(4)+p.lng.toFixed(4);
       if(seen.has(k)) return false; seen.add(k); return true;
     });
-    // 거리순 정렬
-    const c = myLoc || DEFAULT;
+    // 지도 중심 기준 거리순 정렬
+    const c = center || {lat:map.getCenter().getLat(), lng:map.getCenter().getLng()};
     list.sort((a,b)=>distKm(c.lat,c.lng,a.lat,a.lng)-distKm(c.lat,c.lng,b.lat,b.lng));
     list = list.slice(0, 30); // 최대 30곳
 
@@ -253,7 +268,7 @@
     $('cardTitle').textContent='내 주변 '+filter.t;
     $('cardCnt').textContent = list.length ? filter.e+' '+list.length+'곳' : '';
 
-    // 마커
+    // 마커 (지도 이동 없이 그리기만 → idle 재검색 안 됨)
     list.forEach((p,i)=>{
       const m=new kakao.maps.Marker({map,position:new kakao.maps.LatLng(p.lat,p.lng),title:p.name,image:RED});
       kakao.maps.event.addListener(m,'click',()=>focusPlace(i,true));
@@ -261,7 +276,6 @@
     });
 
     buildCards();
-    if(list.length) fitAll(); else map.setLevel(6);
   }
 
   function buildCards(){
@@ -313,6 +327,7 @@
     if(curIdx>=0&&markers[curIdx]) markers[curIdx].setImage(RED);
     curIdx=i; markers[i].setImage(BLUE);
     const p=list[i];
+    ignoreIdle=true; // 카드 선택으로 인한 이동은 재검색 안 함
     map.panTo(new kakao.maps.LatLng(p.lat,p.lng));
     if(scrollCard){
       const wrap=$('cards'), card=wrap.querySelector('.rest[data-idx="'+i+'"]');
@@ -324,6 +339,7 @@
     const b=new kakao.maps.LatLngBounds();
     list.forEach(p=>b.extend(new kakao.maps.LatLng(p.lat,p.lng)));
     if(myLoc) b.extend(new kakao.maps.LatLng(myLoc.lat,myLoc.lng));
+    ignoreIdle=true; // 전체보기 이동은 재검색 안 함
     map.setBounds(b);
   }
 
@@ -355,7 +371,7 @@
 
   $('binoc').onclick=()=>{ if(list.length) fitAll(); };
   $('gps').onclick=()=>locate(false, ()=>{});
-  $('locBtn').onclick=()=>locate(false, ()=>search());
+  $('locBtn').onclick=()=>locate(false, ()=>{ scheduleSearch(); });
 
   function openKakao(p){
     window.open('https://map.kakao.com/link/to/'+encodeURIComponent(p.name)+','+p.lat+','+p.lng,'_blank');
