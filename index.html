@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>내 주변 시원한 곳 찾기 v0.14</title>
+<title>내 주변 시원한 곳 찾기 v0.15</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
@@ -186,7 +186,7 @@
       '<path d="M17 0C8 0 1 7 1 16c0 11 16 28 16 28s16-17 16-28C33 7 26 0 17 0z" fill="'+color+'" stroke="#fff" stroke-width="2"/>'+
       '<circle cx="17" cy="16" r="6" fill="#fff"/></svg>';
     return new kakao.maps.MarkerImage('data:image/svg+xml;base64,'+btoa(svg),
-      new kakao.maps.Size(34,44),{offset:new kakao.maps.Point(17,44)});
+      new kakao.maps.Size(20,26),{offset:new kakao.maps.Point(10,26)});
   }
 
   function boot(){
