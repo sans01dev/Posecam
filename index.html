@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>내 주변 시원한 곳 찾기 v0.13</title>
+<title>내 주변 시원한 곳 찾기 v0.14</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
@@ -88,24 +88,21 @@
            -webkit-overflow-scrolling: touch; padding: 0 16px; scrollbar-width: none; }
   #cards::-webkit-scrollbar { display: none; }
 
-  .rest { scroll-snap-align: center; flex: 0 0 calc(100% - 44px); background: #fff; border-radius: 18px;
-          box-shadow: 0 8px 26px rgba(20,40,50,.20); padding: 14px 16px; display: flex; align-items: center; gap: 14px; }
-  .thumb { width: 60px; height: 60px; border-radius: 14px; flex-shrink: 0;
+  .rest { scroll-snap-align: center; flex: 0 0 calc(100% - 44px); background: #fff; border-radius: 16px;
+          box-shadow: 0 8px 26px rgba(20,40,50,.20); padding: 11px 14px; display: flex; align-items: center; gap: 12px; }
+  .thumb { width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
            background: linear-gradient(135deg, var(--primary-light), var(--primary));
-           display: flex; align-items: center; justify-content: center; font-size: 30px; }
+           display: flex; align-items: center; justify-content: center; font-size: 24px; }
   .info { flex: 1; min-width: 0; }
   .nameRow { display: flex; align-items: baseline; gap: 8px; }
-  .name { font-size: 18px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden;
+  .name { font-size: 16px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden;
           text-overflow: ellipsis; flex: 1; min-width: 0; }
-  .km { font-size: 15px; font-weight: 800; color: var(--primary-dark); flex-shrink: 0; }
-  .travel { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
-  .tline { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .km { font-size: 14px; font-weight: 800; color: var(--primary-dark); flex-shrink: 0; }
+  .travel { margin-top: 4px; display: flex; align-items: center; gap: 10px; }
+  .tline { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink); }
   .tline .lb { color: var(--sub); font-weight: 600; }
-  .cat { display: inline-block; margin-top: 8px; padding: 3px 9px; border-radius: 9px;
-         background: #E0F5F8; color: var(--primary-dark); font-size: 12.5px; font-weight: 700;
-         max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .go { flex-shrink: 0; width: 44px; height: 44px; border-radius: 12px; border: none;
-        background: var(--primary); color: #fff; font-size: 20px; font-weight: 800; cursor: pointer; }
+  .go { flex-shrink: 0; width: 40px; height: 40px; border-radius: 11px; border: none;
+        background: var(--primary); color: #fff; font-size: 18px; font-weight: 800; cursor: pointer; }
   .go:active { background: var(--primary-dark); }
 
   .empty { scroll-snap-align: center; flex: 0 0 calc(100% - 44px); background: #fff; border-radius: 18px;
@@ -181,8 +178,8 @@
   function fmtMin(m){return m>=60?Math.floor(m/60)+'시간 '+(m%60)+'분':m+'분';}
   function fmtDist(km){return km<1?Math.round(km*1000)+'m':km.toFixed(1)+'km';}
 
-  const CAR_SVG='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B7A8F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13"></path><path d="M5 13h14v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-4z"></path><circle cx="7.5" cy="15.5" r="1"></circle><circle cx="16.5" cy="15.5" r="1"></circle></svg>';
-  const WALK_SVG='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6A828A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.6"></circle><path d="M13 7l-2 4 3 2 1 5"></path><path d="M11 11l-3 1-2 4"></path><path d="M14 13l3 1"></path></svg>';
+  const CAR_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B7A8F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13"></path><path d="M5 13h14v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-4z"></path><circle cx="7.5" cy="15.5" r="1"></circle><circle cx="16.5" cy="15.5" r="1"></circle></svg>';
+  const WALK_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6A828A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.6"></circle><path d="M13 7l-2 4 3 2 1 5"></path><path d="M11 11l-3 1-2 4"></path><path d="M14 13l3 1"></path></svg>';
 
   function pinImage(color){
     const svg='<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44">'+
@@ -282,7 +279,6 @@
         '<div class="info">'+
           '<div class="nameRow"><div class="name">'+p.name+'</div><div class="km" data-km="'+i+'">–</div></div>'+
           '<div class="travel" data-tidx="'+i+'"><div class="tline lb">📍 위치 확인 중…</div></div>'+
-          (p.cat?'<div class="cat">📍 '+p.cat+'</div>':'')+
         '</div>'+
         '<button class="go" title="길찾기">→</button>';
       c.querySelector('.go').onclick=e=>{e.stopPropagation();openKakao(p);};
