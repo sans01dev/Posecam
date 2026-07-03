@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>내 주변 시원한 곳 찾기 v0.17</title>
+<title>내 주변 시원한 곳 찾기 v0.18</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
@@ -98,8 +98,8 @@
   .name { font-size: 16px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden;
           text-overflow: ellipsis; flex: 1; min-width: 0; }
   .km { font-size: 14px; font-weight: 800; color: var(--primary-dark); flex-shrink: 0; }
-  .travel { margin-top: 4px; display: flex; align-items: center; gap: 10px; }
-  .tline { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink); }
+  .travel { margin-top: 4px; display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+  .tline { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--ink); white-space: nowrap; }
   .tline .lb { color: var(--sub); font-weight: 600; }
   .go { flex-shrink: 0; width: 40px; height: 40px; border-radius: 11px; border: none;
         background: var(--primary); color: #fff; font-size: 18px; font-weight: 800; cursor: pointer; }
@@ -213,9 +213,9 @@
       scheduleSearch();
     });
 
-    // 내 위치로 이동 → idle 발생 → 자동 검색
-    locate(true, ()=>{
-      if(myLoc){ map.setCenter(new kakao.maps.LatLng(myLoc.lat, myLoc.lng)); }
+    // 앱 켜질 때 딱 한 번 내 위치로 이동 → 그 지역 검색 (그 뒤론 안 움직임)
+    locate(false, ()=>{
+      if(myLoc){ suppressIdle(1200); map.setCenter(new kakao.maps.LatLng(myLoc.lat, myLoc.lng)); }
       scheduleSearch();
     });
   }
@@ -344,7 +344,7 @@
     map.setBounds(b);
   }
 
-  function locate(silent, cb){
+  function locate(moveMap, cb){
     if(!navigator.geolocation){ $('locbar').classList.add('on'); if(cb)cb(); return; }
     navigator.geolocation.getCurrentPosition(pos=>{
       myLoc={lat:pos.coords.latitude,lng:pos.coords.longitude};
@@ -355,7 +355,7 @@
         image:new kakao.maps.MarkerImage('data:image/svg+xml;base64,'+btoa(
           '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"><circle cx="11" cy="11" r="6" fill="#2563EB" stroke="#fff" stroke-width="3"/></svg>'),
           new kakao.maps.Size(22,22),{offset:new kakao.maps.Point(11,11)})});
-      if(!silent) map.panTo(loc);
+      if(moveMap){ suppressIdle(1000); map.panTo(loc); } // 지도 이동은 명시적으로 요청할 때만
       updateTravel();
       if(cb) cb();
     },()=>{ $('locbar').classList.add('on'); if(cb)cb(); },{enableHighAccuracy:true,timeout:8000});
@@ -371,8 +371,8 @@
   });
 
   $('binoc').onclick=()=>{ if(list.length) fitAll(); };
-  $('gps').onclick=()=>locate(false, ()=>{});
-  $('locBtn').onclick=()=>locate(false, ()=>{ scheduleSearch(); });
+  $('gps').onclick=()=>locate(true, ()=>{}); // GPS 버튼 누를 때만 지도 이동
+  $('locBtn').onclick=()=>locate(true, ()=>{ scheduleSearch(); });
 
   function openKakao(p){
     window.open('https://map.kakao.com/link/to/'+encodeURIComponent(p.name)+','+p.lat+','+p.lng,'_blank');
