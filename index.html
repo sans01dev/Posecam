@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>내 주변 시원한 곳 찾기 v0.16</title>
+<title>내 주변 시원한 곳 찾기 v0.17</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
@@ -169,8 +169,9 @@
   let map, ps, myMarker, markers = [], curIdx = -1, myLoc = null;
   let list = [], filter = { kw:'냉면,밀면,냉국수', t:'냉음식', e:'🍜' };
   let RED, BLUE;
-  let ignoreIdle = false, searchTimer = null;
+  let ignoreUntil = 0, searchTimer = null;
 
+  function suppressIdle(ms){ ignoreUntil = Date.now() + (ms || 900); }
   function scheduleSearch(){ clearTimeout(searchTimer); searchTimer = setTimeout(search, 400); }
 
   function distKm(a,b,c,d){const R=6371,r=x=>x*Math.PI/180;const dLat=r(c-a),dLng=r(d-b);
@@ -208,7 +209,7 @@
 
     // 지도 멈출 때마다 자동 재검색 (프로그램 이동은 제외)
     kakao.maps.event.addListener(map, 'idle', ()=>{
-      if(ignoreIdle){ ignoreIdle=false; return; }
+      if(Date.now() < ignoreUntil) return;
       scheduleSearch();
     });
 
@@ -259,8 +260,8 @@
       const k=p.name+p.lat.toFixed(4)+p.lng.toFixed(4);
       if(seen.has(k)) return false; seen.add(k); return true;
     });
-    // 지도 중심 기준 거리순 정렬
-    const c = center || {lat:map.getCenter().getLat(), lng:map.getCenter().getLng()};
+    // 거리순 정렬: 항상 내 위치(myLoc) 기준. 위치 없으면 지도중심.
+    const c = myLoc || center || {lat:map.getCenter().getLat(), lng:map.getCenter().getLng()};
     list.sort((a,b)=>distKm(c.lat,c.lng,a.lat,a.lng)-distKm(c.lat,c.lng,b.lat,b.lng));
     list = list.slice(0, 30); // 최대 30곳
 
@@ -327,7 +328,7 @@
     if(curIdx>=0&&markers[curIdx]) markers[curIdx].setImage(RED);
     curIdx=i; markers[i].setImage(BLUE);
     const p=list[i];
-    ignoreIdle=true; // 카드 선택으로 인한 이동은 재검색 안 함
+    suppressIdle(1000); // 카드 선택 이동은 재검색 안 함 (여러 번 이동 대응)
     map.panTo(new kakao.maps.LatLng(p.lat,p.lng));
     if(scrollCard){
       const wrap=$('cards'), card=wrap.querySelector('.rest[data-idx="'+i+'"]');
@@ -339,7 +340,7 @@
     const b=new kakao.maps.LatLngBounds();
     list.forEach(p=>b.extend(new kakao.maps.LatLng(p.lat,p.lng)));
     if(myLoc) b.extend(new kakao.maps.LatLng(myLoc.lat,myLoc.lng));
-    ignoreIdle=true; // 전체보기 이동은 재검색 안 함
+    suppressIdle(1000); // 전체보기 이동은 재검색 안 함
     map.setBounds(b);
   }
 
