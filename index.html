@@ -2,570 +2,248 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>포즈따라 v0.5</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>냉 - 내 주변 냉음식 지도 v0.1</title>
 <style>
-  :root{
-    --accent:#FF2E63; --dash:#ffffff; --shutter:#FF2E63; --shutter-ring:#ffffff;
-    --chipon-bg:#ffffff; --chipon-fg:#111; --chipoff-bg:rgba(20,20,26,.55); --chipoff-fg:#fff;
-    --brand-font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
-    --label-font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
-    --fillcol:rgba(255,46,99,.16); --tint:transparent; --chip-radius:999px;
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+  body { background: #E8F7FA; overflow: hidden; }
+
+  /* ===== 색상 시스템 (시원한 청록) ===== */
+  :root {
+    --primary: #0F9CB5;
+    --primary-dark: #0B7A8F;
+    --primary-light: #6FD6E4;
+    --ink: #143038;
+    --sub: #5A7982;
+    --card-bg: #FFFFFF;
+    --shadow: 0 6px 24px rgba(15,124,143,.18);
   }
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;background:#0E0E12;overflow:hidden;overscroll-behavior:none}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#fff;position:fixed;inset:0}
 
-  /* ===== THEMES ===== */
-  body.t-film{ --accent:#E8B65A; --dash:#f6e8c8; --shutter:#E0492E; --shutter-ring:#f6e8c8;
-    --chipon-bg:#E8B65A; --chipon-fg:#1a1610; --chipoff-bg:transparent; --chipoff-fg:#cdb88c;
-    --brand-font:"Courier New",monospace; --label-font:"Courier New",monospace;
-    --fillcol:rgba(232,182,90,.11); --tint:rgba(120,84,30,.20); --chip-radius:7px; }
-  body.t-mz{ --accent:#EC4899; --dash:#ffffff; --shutter:#EC4899; --shutter-ring:#A855F7;
-    --chipon-bg:#EC4899; --chipon-fg:#fff; --chipoff-bg:rgba(255,255,255,.12); --chipoff-fg:#fff;
-    --fillcol:rgba(236,72,153,.14); --tint:rgba(40,20,55,.22); --chip-radius:999px; }
-  body.t-luxe{ --accent:#C9A24B; --dash:rgba(255,255,255,.86); --shutter:#0a0a0c; --shutter-ring:#C9A24B;
-    --chipon-bg:transparent; --chipon-fg:#C9A24B; --chipoff-bg:transparent; --chipoff-fg:#777;
-    --brand-font:Georgia,"Times New Roman",serif; --label-font:Georgia,serif;
-    --fillcol:rgba(201,162,75,.10); --tint:rgba(0,0,0,.28); --chip-radius:2px; }
+  #app { position: relative; width: 100%; height: 100%; }
 
-  #stage{position:absolute;inset:0;background:#000;overflow:hidden}
-  #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-  #cam.mirror{transform:scaleX(-1)}
-  #tint{position:absolute;inset:0;background:var(--tint);pointer-events:none;mix-blend-mode:multiply}
-  #overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-  #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+  /* ===== 상단 헤더 ===== */
+  #header {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(232,247,250,.98) 40%, rgba(232,247,250,0));
+    pointer-events: none;
+  }
+  #title {
+    display: flex; align-items: center; gap: 8px;
+    background: #fff; border-radius: 14px;
+    padding: 10px 16px; box-shadow: var(--shadow);
+    font-size: 17px; font-weight: 800; color: var(--ink);
+    pointer-events: auto;
+  }
+  #title .ice { font-size: 20px; }
 
-  /* film sprockets */
-  #sprocketL,#sprocketR{position:absolute;top:0;bottom:0;width:16px;display:none;flex-direction:column;
-    justify-content:space-around;padding:10px 0;z-index:4;pointer-events:none}
-  #sprocketL{left:0}#sprocketR{right:0}
-  body.t-film #sprocketL,body.t-film #sprocketR{display:flex}
-  .spk{width:9px;height:18px;border-radius:2px;background:rgba(8,6,4,.78);margin:0 auto}
+  /* ===== 지도 ===== */
+  #map { width: 100%; height: 100%; background: #D6EEF3; }
 
-  /* luxe corner frame */
-  #lframe{position:absolute;inset:12px;border:.8px solid var(--accent);opacity:.5;display:none;pointer-events:none;z-index:4}
-  body.t-luxe #lframe{display:block}
+  /* ===== SDK 미로드 안내 ===== */
+  #nokey {
+    position: absolute; inset: 0; z-index: 5;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; padding: 40px; text-align: center; color: var(--sub);
+    background: #E8F7FA;
+  }
+  #nokey .big { font-size: 42px; }
+  #nokey .t { font-size: 15px; font-weight: 700; line-height: 1.55; color: var(--ink); }
+  #nokey .s { font-size: 13px; font-weight: 600; line-height: 1.55; }
+  #nokey code { background:#fff; padding:2px 6px; border-radius:8px; color:var(--primary-dark); font-weight:700; }
 
-  /* date stamp (film) */
-  #datestamp{position:absolute;top:max(16px,env(safe-area-inset-top));right:20px;z-index:6;
-    font-family:"Courier New",monospace;color:#ffb03b;font-size:14px;letter-spacing:1px;display:none;
-    text-shadow:0 1px 2px rgba(0,0,0,.6)}
-  body.t-film #datestamp{display:block}
+  /* ===== GPS 버튼 ===== */
+  #gps {
+    position: absolute; right: 16px; bottom: 190px; z-index: 15;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #fff; border: none; box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; cursor: pointer;
+  }
+  #gps:active { transform: scale(.94); }
 
-  #top{position:absolute;top:0;left:0;right:0;padding:max(14px,env(safe-area-inset-top)) 16px 14px;
-    display:flex;align-items:center;gap:9px;z-index:6;background:linear-gradient(to bottom,rgba(0,0,0,.5),transparent)}
-  .brand{font-weight:800;font-size:17px;letter-spacing:-.4px;font-family:var(--brand-font)}
-  .brand b{color:var(--accent)}
-  body.t-luxe .brand{letter-spacing:2px;font-weight:600;font-size:15px}
-  .top-sp{flex:1}
-  .ic{width:40px;height:40px;border-radius:50%;background:rgba(20,20,26,.5);
-    border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;
-    backdrop-filter:blur(6px);cursor:pointer;font-size:17px;color:#fff}
-  .ic.on{background:var(--accent);border-color:var(--accent);color:#111}
+  /* ===== 하단 식당 카드 (바텀시트) ===== */
+  #sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 18;
+    background: var(--card-bg);
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -6px 28px rgba(15,124,143,.22);
+    padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
+    transform: translateY(110%);
+    transition: transform .28s cubic-bezier(.22,.8,.3,1);
+  }
+  #sheet.open { transform: translateY(0); }
+  #sheet .grip { width: 40px; height: 4px; border-radius: 4px; background: #CBE4EA; margin: 4px auto 12px; }
 
-  /* theme switch */
-  #themes{position:absolute;left:0;right:0;z-index:6;display:flex;gap:7px;justify-content:center;
-    top:calc(max(14px,env(safe-area-inset-top)) + 50px)}
-  .tbtn{padding:6px 13px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;
-    background:rgba(20,20,26,.5);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(6px);color:#fff}
-  .tbtn.on{background:var(--accent);color:#111;border-color:var(--accent)}
+  .row { display: flex; gap: 14px; align-items: center; }
+  .thumb {
+    width: 60px; height: 60px; border-radius: 16px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px; color: #fff;
+  }
+  .info { flex: 1; min-width: 0; }
+  .name { font-size: 18px; font-weight: 800; color: var(--ink); }
+  .meta { font-size: 14px; font-weight: 600; color: var(--sub); margin-top: 3px; }
+  .dish { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 10px;
+          background: #E0F5F8; color: var(--primary-dark); font-size: 13px; font-weight: 700; }
 
-  #poseTag{position:absolute;left:50%;top:calc(max(14px,env(safe-area-inset-top)) + 92px);
-    transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:4px;
-    pointer-events:none;text-align:center;width:86%}
-  #poseName{background:rgba(14,14,18,.5);backdrop-filter:blur(6px);padding:5px 14px;border-radius:999px;
-    font-weight:700;font-size:14px;border:1px solid rgba(255,255,255,.14);font-family:var(--label-font)}
-  #poseTip{font-size:12px;color:rgba(255,255,255,.66);font-weight:500;text-shadow:0 1px 3px rgba(0,0,0,.6);line-height:1.4}
+  #kakaoBtn {
+    display: block; width: 100%; margin-top: 14px;
+    padding: 15px; border: none; border-radius: 14px;
+    background: var(--primary); color: #fff;
+    font-size: 16px; font-weight: 800; cursor: pointer;
+  }
+  #kakaoBtn:active { background: var(--primary-dark); }
 
-  #cats{position:absolute;left:0;right:0;bottom:calc(170px + env(safe-area-inset-bottom));z-index:6;
-    display:flex;gap:8px;overflow-x:auto;padding:0 16px;scrollbar-width:none}
-  #cats::-webkit-scrollbar{display:none}
-  .chip{flex:0 0 auto;padding:8px 15px;border-radius:var(--chip-radius);font-size:13px;font-weight:700;
-    background:var(--chipoff-bg);border:1px solid rgba(255,255,255,.16);color:var(--chipoff-fg);
-    backdrop-filter:blur(6px);cursor:pointer;white-space:nowrap;transition:.15s;font-family:var(--label-font)}
-  .chip.on{background:var(--chipon-bg);color:var(--chipon-fg);border-color:var(--accent)}
-  body.t-luxe .chip{border:none;border-bottom:1.5px solid transparent;border-radius:0;backdrop-filter:none;background:transparent}
-  body.t-luxe .chip.on{border-bottom-color:var(--accent);background:transparent}
-
-  #strip{position:absolute;left:0;right:0;bottom:calc(108px + env(safe-area-inset-bottom));z-index:6;
-    display:flex;gap:9px;overflow-x:auto;padding:0 16px;scrollbar-width:none}
-  #strip::-webkit-scrollbar{display:none}
-  .pcard{flex:0 0 auto;width:46px;height:54px;border-radius:12px;cursor:pointer;
-    background:rgba(20,20,26,.5);border:1px solid rgba(255,255,255,.16);
-    backdrop-filter:blur(6px);display:grid;place-items:center;transition:.15s;padding:4px}
-  body.t-film .pcard{border-radius:5px}
-  body.t-luxe .pcard{border-radius:2px}
-  .pcard svg{width:100%;height:100%}
-  .pcard.on{border-color:var(--accent);background:var(--fillcol);box-shadow:0 0 0 1px var(--accent)}
-
-  #ctrls{position:absolute;left:0;right:0;bottom:0;z-index:7;padding:0 26px calc(20px + env(safe-area-inset-bottom));
-    height:calc(96px + env(safe-area-inset-bottom));display:flex;align-items:center;justify-content:space-between;
-    background:linear-gradient(to top,rgba(0,0,0,.5),transparent)}
-  .side{width:50px;height:50px;border-radius:50%;background:rgba(20,20,26,.55);
-    border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;backdrop-filter:blur(6px);cursor:pointer;font-size:20px;color:#fff}
-  #shutter{width:74px;height:74px;border-radius:50%;border:5px solid var(--shutter-ring);
-    background:var(--shutter);cursor:pointer;position:relative;transition:transform .08s}
-  #shutter:active{transform:scale(.92)}
-  body.t-luxe #shutter{border-width:2px;background:transparent}
-  body.t-luxe #shutter::after{content:"";position:absolute;inset:8px;border-radius:50%;background:var(--accent)}
-
-  #sheet{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.78);display:none;
-    flex-direction:column;justify-content:flex-end;backdrop-filter:blur(4px)}
-  #sheet.show{display:flex}
-  .sheet-in{background:#15151b;border-radius:24px 24px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));
-    max-height:88vh;display:flex;flex-direction:column;gap:14px}
-  .sheet-grip{width:38px;height:4px;border-radius:99px;background:#3a3a44;margin:0 auto}
-  #shot{width:100%;border-radius:16px;object-fit:contain;max-height:58vh;background:#000}
-  .sheet-row{display:flex;gap:10px}
-  .btn{flex:1;padding:15px;border-radius:14px;font-size:15px;font-weight:800;border:none;cursor:pointer}
-  .btn.g{background:var(--accent);color:#111}
-  .btn.o{background:#26262e;color:#fff}
-
-  #intro{position:absolute;inset:0;z-index:40;background:#0E0E12;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;gap:16px;padding:32px;text-align:center}
-  #intro.hide{display:none}
-  .i-logo{font-size:30px;font-weight:900;letter-spacing:-1px}
-  .i-logo b{color:var(--accent)}
-  .i-sub{color:rgba(255,255,255,.66);font-size:15px;line-height:1.7;font-weight:500}
-  .i-demo{width:118px;height:150px;margin:4px 0}
-  #intro .btn.g{max-width:240px;width:100%;color:#111}
-
-  .err{position:absolute;inset:0;z-index:30;display:none;flex-direction:column;align-items:center;
-    justify-content:center;gap:14px;padding:34px;text-align:center;background:#0E0E12}
-  .err.show{display:flex}
-  .err p{color:rgba(255,255,255,.66);font-size:14.5px;line-height:1.6}
-  .err .btn{flex:0 0 auto;width:100%;max-width:220px;color:#111}
-  .err .hint{margin-top:6px;font-size:12.5px;color:#7a7a86;line-height:1.6;background:#18181f;
-    border:1px solid #26262e;border-radius:12px;padding:12px 14px;max-width:300px}
-  .err .hint b{color:var(--accent)}
-
-  /* zoom slider (세로) */
-  #zoom{position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:6;
-    display:flex;flex-direction:column;align-items:center;gap:8px;
-    background:rgba(14,14,18,.4);backdrop-filter:blur(6px);padding:12px 6px;border-radius:999px;
-    border:1px solid rgba(255,255,255,.14)}
-  .zlabel{color:#fff;font-size:16px;font-weight:700;opacity:.85}
-  #zoomRange{writing-mode:vertical-lr;direction:rtl;-webkit-appearance:slider-vertical;
-    width:26px;height:34vh;max-height:300px;accent-color:var(--accent)}
-  /* drag hint badge */
-  #draghint{position:absolute;left:50%;bottom:calc(210px + env(safe-area-inset-bottom));
-    transform:translateX(-50%);z-index:6;background:rgba(14,14,18,.55);backdrop-filter:blur(6px);
-    color:rgba(255,255,255,.85);font-size:11.5px;padding:6px 12px;border-radius:999px;
-    border:1px solid rgba(255,255,255,.14);pointer-events:none;transition:opacity .4s}
-  #draghint.gone{opacity:0}
+  /* ===== 리스트 카운트 배지 ===== */
+  #count {
+    position: absolute; left: 16px; bottom: 24px; z-index: 15;
+    background: #fff; border-radius: 12px; padding: 10px 14px;
+    box-shadow: var(--shadow); font-size: 14px; font-weight: 700; color: var(--ink);
+  }
+  #count b { color: var(--primary-dark); }
 </style>
 </head>
-<body class="t-film">
+<body>
+<div id="app">
+  <div id="header">
+    <div id="title"><span class="ice">🧊</span>내 주변 냉음식</div>
+  </div>
 
-<div id="stage">
-  <video id="cam" autoplay playsinline muted></video>
-  <div id="tint"></div>
-  <svg id="overlay" viewBox="0 0 100 130" preserveAspectRatio="xMidYMid slice"></svg>
-  <div id="sprocketL"></div><div id="sprocketR"></div>
-  <div id="lframe"></div>
-  <div id="flash"></div>
-</div>
+  <div id="map"></div>
 
-<div id="datestamp">2026.06.29</div>
-
-<div id="zoom">
-  <div class="zlabel">＋</div>
-  <input id="zoomRange" type="range" min="20" max="125" value="42">
-  <div class="zlabel">－</div>
-</div>
-
-<div id="top">
-  <div class="brand" id="brand">포즈<b>따라</b></div>
-  <div class="top-sp"></div>
-  <div class="ic" id="gridBtn" title="격자">⊞</div>
-  <div class="ic" id="fillBtn" title="채움">◐</div>
-  <div class="ic" id="flipPose" title="좌우반전">⇄</div>
-  <div class="ic" id="resetBtn" title="가운데로">⌖</div>
-</div>
-
-<div id="themes">
-  <div class="tbtn on" data-t="t-film">필름</div>
-  <div class="tbtn" data-t="t-mz">MZ</div>
-  <div class="tbtn" data-t="t-luxe">고급</div>
-</div>
-
-<div id="poseTag">
-  <div id="poseName">전신 풀샷</div>
-  <div id="poseTip">점선에 몸을 맞춰 서보세요</div>
-</div>
-
-<div id="draghint">가이드를 끌어 옮기고, 두 손가락으로 크기 조절</div>
-
-<div id="cats"></div>
-<div id="strip"></div>
-
-<div id="ctrls">
-  <div class="side" id="hintBtn" title="안내">？</div>
-  <button id="shutter" aria-label="촬영"></button>
-  <div class="side" id="camFlip" title="카메라전환">⟲</div>
-</div>
-
-<div id="sheet">
-  <div class="sheet-in">
-    <div class="sheet-grip"></div>
-    <img id="shot" alt="촬영 결과">
-    <div class="sheet-row">
-      <button class="btn o" id="retake">다시 찍기</button>
-      <button class="btn g" id="save">저장하기</button>
+  <div id="nokey">
+    <div class="big">🗺️</div>
+    <div class="t">카카오맵 키를 넣어주세요</div>
+    <div class="s">
+      GitHub Pages에 올린 뒤<br>
+      카카오 개발자 콘솔에서 도메인 등록 →<br>
+      JavaScript 키를 <code>KAKAO_KEY</code> 자리에 입력
     </div>
+  </div>
+
+  <button id="gps" title="내 위치">📍</button>
+  <div id="count">🧊 냉음식 <b id="cnum">0</b>곳</div>
+
+  <div id="sheet">
+    <div class="grip"></div>
+    <div class="row">
+      <div class="thumb" id="sThumb">🍜</div>
+      <div class="info">
+        <div class="name" id="sName">-</div>
+        <div class="meta" id="sMeta">-</div>
+        <div class="dish" id="sDish">-</div>
+      </div>
+    </div>
+    <button id="kakaoBtn">카카오맵으로 길찾기 →</button>
   </div>
 </div>
 
-<div id="intro">
-  <div class="i-logo">포즈<b>따라</b></div>
-  <svg class="i-demo" viewBox="0 0 100 130"></svg>
-  <div class="i-sub">점선 가이드에 몸을 맞추면<br>누구나 인생샷.<br>유행 포즈, 그냥 따라만 하세요.</div>
-  <button class="btn g" id="startBtn">카메라 켜기</button>
-</div>
-
-<div class="err" id="err">
-  <div style="font-size:34px">📷</div>
-  <div style="font-weight:800;font-size:17px" id="errTitle">카메라를 켤 수 없어요</div>
-  <p id="errDesc">설정에서 카메라 권한을 허용한 뒤<br>다시 들어와 주세요.</p>
-  <div class="hint" id="errHint" style="display:none"></div>
-  <button class="btn g" id="retry">다시 시도</button>
-</div>
-
 <script>
-function figurePaths(j){
-  const L=[]; const add=(a,b)=>{ if(j[a]&&j[b]) L.push([j[a][0],j[a][1],j[b][0],j[b][1]]); };
-  add('n','sL'); add('n','sR'); add('n','hip');
-  add('sL','eL'); add('eL','hL'); add('sR','eR'); add('eR','hR');
-  add('hip','hpL'); add('hip','hpR'); add('hpL','kL'); add('kL','fL'); add('hpR','kR'); add('kR','fR');
-  return L;
-}
-const STAND={ n:[50,30], sL:[42,34], sR:[58,34], hip:[50,60],
-  hpL:[45,61], hpR:[55,61], kL:[44,84], kR:[56,84], fL:[43,108], fR:[57,108] };
-function fig(o){ return Object.assign({head:[50,20,9]}, JSON.parse(JSON.stringify(STAND)), o); }
+/* =========================================================
+   냉음식 지도 v0.1
+   ---------------------------------------------------------
+   [해야 할 일]
+   1) 이 파일을 GitHub 레포에 올리고 Pages 켜기
+   2) 카카오 개발자 콘솔(developers.kakao.com)에서 앱 생성
+      → 플랫폼 > Web > 사이트 도메인에 https://아이디.github.io 등록
+   3) 아래 KAKAO_KEY 에 JavaScript 키 붙여넣기
+   ========================================================= */
+  const KAKAO_KEY = ''; // ← 여기에 카카오 JavaScript 키 입력
 
-const POSES=[
-/* 혼자 */
-{id:'s1',cat:'혼자',name:'전신 풀샷',tip:'점선에 몸을 맞춰 똑바로 서요',
-  figs:[fig({ eL:[37,46], hL:[35,58], eR:[63,46], hR:[65,58] })]},
-{id:'s2',cat:'혼자',name:'로우앵글 다리길게',tip:'폰을 아래에서 위로! 다리가 길어 보여요',
-  figs:[fig({ head:[50,14,7], n:[50,24], sL:[43,28],sR:[57,28], eL:[39,40],hL:[37,52], eR:[61,40],hR:[63,52],
-    hip:[50,56], hpL:[46,57],hpR:[54,57], kL:[45,86],kR:[55,86], fL:[44,118],fR:[56,118] })]},
-{id:'s3',cat:'혼자',name:'뒷모습',tip:'등을 보이고 먼 곳을 바라봐요',
-  figs:[fig({ eL:[40,46],hL:[40,58], eR:[60,46],hR:[60,58] })]},
-{id:'s7',cat:'혼자',name:'어깨너머 돌아보기',tip:'몸은 돌리고 고개만 살짝 뒤로',
-  figs:[fig({ head:[54,20,9], n:[50,30], sL:[40,33],sR:[58,35], eL:[36,45],hL:[36,57], eR:[62,45],hR:[62,57] })]},
-{id:'s8',cat:'혼자',name:'쪼그려 앉기',tip:'카메라를 낮추고 한쪽 무릎으로 쪼그려요',
-  figs:[fig({ head:[50,28,9], n:[50,38], sL:[42,42],sR:[58,42], eL:[39,52],hL:[42,62], eR:[61,52],hR:[58,62],
-    hip:[50,66], hpL:[44,67],hpR:[56,67], kL:[38,82],kR:[62,82], fL:[44,104],fR:[56,104] })]},
-{id:'s4',cat:'혼자',name:'앉은 포즈',tip:'무릎을 세우고 편하게 앉아요',
-  figs:[fig({ n:[50,38],sL:[43,42],sR:[57,42], eL:[40,52],hL:[44,60], eR:[60,52],hR:[56,60],
-    hip:[50,66], hpL:[45,67],hpR:[55,67], kL:[40,80],kR:[60,80], fL:[44,96],fR:[56,96] })]},
-{id:'s5',cat:'혼자',name:'벽에 기대기',tip:'한 발을 벽에 대고 살짝 기대요',
-  figs:[fig({ n:[52,30],sL:[44,34],sR:[60,34], eL:[42,46],hL:[44,58], eR:[64,44],hR:[66,54],
-    hip:[52,60], hpL:[47,61],hpR:[57,61], kL:[46,84],kR:[60,80], fL:[45,108],fR:[64,104] })]},
-{id:'s6',cat:'혼자',name:'걷는 척',tip:'한 발 내딛고 시선은 옆으로',
-  figs:[fig({ eL:[38,46],hL:[36,56], eR:[62,46],hR:[66,52], kL:[42,84],kR:[58,82], fL:[38,108],fR:[64,106] })]},
+  // 거제 냉음식 데이터 (검색 결과 임베드)
+  const PLACES = [
+    { name:'고메밀면 아주점', lat:34.8675089, lng:128.6891044, dish:'밀면', icon:'🍜', addr:'아주1로4길 21' },
+    { name:'거제명가',       lat:34.867917,  lng:128.6793342, dish:'냉면', icon:'🍜', addr:'아주1로 64' },
+    { name:'아라가야 냉면 학동점', lat:34.83338, lng:128.7013059, dish:'냉면·갈비탕', icon:'🥶', addr:'지세포해안로 40' },
+    { name:'거제냉밀면',     lat:34.8881026, lng:128.6227077, dish:'물밀면', icon:'❄️', addr:'고현동' },
+    { name:'거제촌국수',     lat:34.9094075, lng:128.5459043, dish:'콩국수·냉국수', icon:'🥣', addr:'사등리' },
+  ];
 
-/* 셀카 */
-{id:'f6',cat:'셀카',name:'디카 셀카',tip:'양손으로 카메라를 들고 찰칵! 요즘 그 감성',
-  figs:[{head:[50,32,15], n:[50,56], sL:[34,64],sR:[66,64], eL:[38,72],hL:[45,50], eR:[62,72],hR:[55,50]}]},
-{id:'f1',cat:'셀카',name:'기본 브이',tip:'얼굴 옆에 브이! 살짝 턱 당기기',
-  figs:[{head:[50,34,15], n:[50,58], sL:[34,66],sR:[66,66], eL:[30,80],hL:[40,52], eR:[70,80],hR:[60,52]}]},
-{id:'f7',cat:'셀카',name:'머리 넘기기',tip:'한 손으로 머리 쓸어올려 움직임을',
-  figs:[{head:[50,34,15], n:[50,58], sL:[34,66],sR:[66,66], eL:[40,46],hL:[48,30], eR:[70,78],hR:[64,82]}]},
-{id:'f8',cat:'셀카',name:'얼굴 반쯤 가리기',tip:'손으로 얼굴 절반만 가려 한쪽 눈만',
-  figs:[{head:[50,34,15], n:[50,58], sL:[34,66],sR:[66,66], eL:[36,58],hL:[46,40], eR:[70,80],hR:[64,84]}]},
-{id:'f2',cat:'셀카',name:'옆얼굴 손하트',tip:'고개 살짝 돌리고 손가락 하트',
-  figs:[{head:[46,34,15], n:[48,58], sL:[34,66],sR:[64,66], eL:[32,78],hL:[34,50], eR:[68,78],hR:[64,82]}]},
-{id:'f3',cat:'셀카',name:'머리 위 큰 하트',tip:'양팔로 머리 위에 큰 하트를',
-  figs:[{head:[50,42,14], n:[50,64], sL:[36,70],sR:[64,70], eL:[26,52],hL:[44,30], eR:[74,52],hR:[56,30]}]},
-{id:'f4',cat:'셀카',name:'볼 하트',tip:'두 손을 볼에 모아 귀엽게',
-  figs:[{head:[50,36,15], n:[50,60], sL:[35,68],sR:[65,68], eL:[40,58],hL:[44,44], eR:[60,58],hR:[56,44]}]},
-{id:'f5',cat:'셀카',name:'턱 괴기',tip:'한 손으로 턱을 괴고 시크하게',
-  figs:[{head:[50,36,15], n:[50,60], sL:[35,68],sR:[65,68], eL:[42,62],hL:[47,48], eR:[68,80],hR:[66,86]}]},
+  const $ = id => document.getElementById(id);
+  let map, myMarker, cur = null;
 
-/* 커플 */
-{id:'c1',cat:'커플',name:'백허그',tip:'뒤에서 살포시 안아요',
-  figs:[
-    fig({head:[44,22,8], n:[44,32],sL:[37,36],sR:[51,36], eL:[34,46],hL:[36,56], eR:[55,46],hR:[58,54],
-      hip:[44,60],hpL:[40,61],hpR:[48,61], kL:[39,84],kR:[49,84], fL:[38,108],fR:[50,108]}),
-    fig({head:[58,18,8], n:[58,28],sL:[51,32],sR:[65,32], eL:[46,42],hL:[40,52], eR:[69,42],hR:[60,52],
-      hip:[58,56],hpL:[54,57],hpR:[62,57], kL:[53,82],kR:[63,82], fL:[52,108],fR:[64,108]})
-  ]},
-{id:'c2',cat:'커플',name:'어깨동무',tip:'어깨에 팔 두르고 나란히',
-  figs:[
-    fig({head:[40,22,8], n:[40,32],sL:[33,36],sR:[47,36], eL:[30,46],hL:[31,58], eR:[51,42],hR:[58,38],
-      hip:[40,60],hpL:[36,61],hpR:[44,61], kL:[35,84],kR:[45,84], fL:[34,108],fR:[46,108]}),
-    fig({head:[60,22,8], n:[60,32],sL:[53,36],sR:[67,36], eL:[49,42],hL:[42,38], eR:[70,46],hR:[71,58],
-      hip:[60,60],hpL:[56,61],hpR:[64,61], kL:[55,84],kR:[65,84], fL:[54,108],fR:[66,108]})
-  ]},
-{id:'c3',cat:'커플',name:'손하트 합체',tip:'각자 한 손씩 모아 하트 완성',
-  figs:[
-    fig({head:[40,22,8], n:[40,32],sL:[33,36],sR:[47,36], eL:[30,46],hL:[31,58], eR:[51,44],hR:[55,52],
-      hip:[40,60],hpL:[36,61],hpR:[44,61], kL:[35,84],kR:[45,84], fL:[34,108],fR:[46,108]}),
-    fig({head:[60,22,8], n:[60,32],sL:[53,36],sR:[67,36], eL:[49,44],hL:[45,52], eR:[70,46],hR:[69,58],
-      hip:[60,60],hpL:[56,61],hpR:[64,61], kL:[55,84],kR:[65,84], fL:[54,108],fR:[66,108]})
-  ]},
-{id:'c4',cat:'커플',name:'마주보기',tip:'서로 바라보며 이마 가까이',
-  figs:[
-    fig({head:[42,24,8], n:[42,34],sL:[36,38],sR:[49,38], eL:[33,48],hL:[34,58], eR:[52,46],hR:[54,52],
-      hip:[42,60],hpL:[38,61],hpR:[46,61], kL:[37,84],kR:[47,84], fL:[36,108],fR:[48,108]}),
-    fig({head:[58,24,8], n:[58,34],sL:[51,38],sR:[64,38], eL:[48,46],hL:[46,52], eR:[67,48],hR:[66,58],
-      hip:[58,60],hpL:[54,61],hpR:[62,61], kL:[53,84],kR:[63,84], fL:[52,108],fR:[64,108]})
-  ]},
-{id:'c5',cat:'커플',name:'손잡고 뒷모습',tip:'손 잡고 등 보이며 걸어가요',
-  figs:[
-    fig({head:[40,22,8], n:[40,32],sL:[34,36],sR:[47,36], eL:[31,46],hL:[44,56], eR:[51,46],hR:[44,56],
-      hip:[40,60],hpL:[36,61],hpR:[44,61], kL:[35,84],kR:[45,84], fL:[34,108],fR:[46,108]}),
-    fig({head:[60,22,8], n:[60,32],sL:[53,36],sR:[66,36], eL:[49,46],hL:[56,56], eR:[69,46],hR:[64,56],
-      hip:[60,60],hpL:[56,61],hpR:[64,61], kL:[55,84],kR:[65,84], fL:[54,108],fR:[66,108]})
-  ]},
+  function boot() {
+    if (!KAKAO_KEY) return; // 키 없으면 안내 화면 유지
 
-/* 단체 */
-{id:'g1',cat:'단체',name:'일렬로 서기',tip:'어깨 나란히 한 줄로!',
-  figs:[
-    fig({head:[26,26,6.5],n:[26,34],sL:[21,37],sR:[31,37],eL:[19,45],hL:[18,54],eR:[33,45],hR:[34,54],hip:[26,58],hpL:[23,59],hpR:[29,59],kL:[22,80],kR:[30,80],fL:[21,102],fR:[31,102]}),
-    fig({head:[42,24,6.5],n:[42,32],sL:[37,35],sR:[47,35],eL:[35,43],hL:[34,52],eR:[49,43],hR:[50,52],hip:[42,56],hpL:[39,57],hpR:[45,57],kL:[38,78],kR:[46,78],fL:[37,100],fR:[47,100]}),
-    fig({head:[58,24,6.5],n:[58,32],sL:[53,35],sR:[63,35],eL:[51,43],hL:[50,52],eR:[65,43],hR:[66,52],hip:[58,56],hpL:[55,57],hpR:[61,57],kL:[54,78],kR:[62,78],fL:[53,100],fR:[63,100]}),
-    fig({head:[74,26,6.5],n:[74,34],sL:[69,37],sR:[79,37],eL:[67,45],hL:[66,54],eR:[81,45],hR:[82,54],hip:[74,58],hpL:[71,59],hpR:[77,59],kL:[70,80],kR:[78,80],fL:[69,102],fR:[79,102]})
-  ]},
-{id:'g2',cat:'단체',name:'계단식 구도',tip:'키·높이 다르게 층층이 서요',
-  figs:[
-    fig({head:[28,20,6.5],n:[28,28],sL:[23,31],sR:[33,31],eL:[21,39],hL:[20,48],eR:[35,39],hR:[36,48],hip:[28,52],hpL:[25,53],hpR:[31,53],kL:[24,74],kR:[32,74],fL:[23,96],fR:[33,96]}),
-    fig({head:[48,30,7],n:[48,38],sL:[43,41],sR:[53,41],eL:[41,49],hL:[40,58],eR:[55,49],hR:[56,58],hip:[48,62],hpL:[45,63],hpR:[51,63],kL:[44,84],kR:[52,84],fL:[43,106],fR:[53,106]}),
-    fig({head:[70,40,7],n:[70,48],sL:[65,51],sR:[75,51],eL:[63,59],hL:[62,68],eR:[77,59],hR:[78,68],hip:[70,72],hpL:[67,73],hpR:[73,73],kL:[66,94],kR:[74,94],fL:[65,116],fR:[75,116]})
-  ]},
-{id:'g3',cat:'단체',name:'동시 점프',tip:'셋 세고 다 같이 점프!',
-  figs:[
-    fig({head:[30,22,6.5],n:[30,30],sL:[25,33],sR:[35,33],eL:[21,26],hL:[18,18],eR:[39,26],hR:[42,18],hip:[30,54],hpL:[27,55],hpR:[33,55],kL:[24,72],kR:[36,72],fL:[22,86],fR:[38,86]}),
-    fig({head:[55,16,6.5],n:[55,24],sL:[50,27],sR:[60,27],eL:[46,20],hL:[43,12],eR:[64,20],hR:[67,12],hip:[55,48],hpL:[52,49],hpR:[58,49],kL:[49,66],kR:[61,66],fL:[47,80],fR:[63,80]}),
-    fig({head:[78,24,6.5],n:[78,32],sL:[73,35],sR:[83,35],eL:[69,28],hL:[66,20],eR:[87,28],hR:[90,20],hip:[78,56],hpL:[75,57],hpR:[81,57],kL:[72,74],kR:[84,74],fL:[70,88],fR:[86,88]})
-  ]},
-{id:'g4',cat:'단체',name:'브이 모음',tip:'다 같이 얼굴 옆 브이!',
-  figs:[
-    fig({head:[32,26,7],n:[32,34],sL:[27,37],sR:[37,37],eL:[24,30],hL:[26,20],eR:[40,42],hR:[41,52],hip:[32,58],hpL:[29,59],hpR:[35,59],kL:[28,80],kR:[36,80],fL:[27,102],fR:[37,102]}),
-    fig({head:[68,26,7],n:[68,34],sL:[63,37],sR:[73,37],eL:[60,42],hL:[59,52],eR:[76,30],hR:[74,20],hip:[68,58],hpL:[65,59],hpR:[71,59],kL:[64,80],kR:[72,80],fL:[63,102],fR:[73,102]})
-  ]},
-
-/* 여행 */
-{id:'t1',cat:'여행',name:'랜드마크 손가락',tip:'멀리 명소를 손끝으로 가리켜요',
-  figs:[fig({ eL:[38,46],hL:[36,58], eR:[64,40],hR:[74,30] })]},
-{id:'t6',cat:'여행',name:'트월 (빙글)',tip:'팔다리 펴고 빙글! 움직임을 담아요',
-  figs:[fig({ n:[50,30],sL:[42,33],sR:[58,33], eL:[34,26],hL:[28,18], eR:[66,26],hR:[72,18],
-    hip:[50,58], hpL:[45,59],hpR:[55,59], kL:[40,80],kR:[60,78], fL:[34,100],fR:[66,96] })]},
-{id:'t2',cat:'여행',name:'풍경 보는 뒷모습',tip:'풍경을 향해 등 보이고 서요',
-  figs:[fig({ eL:[40,46],hL:[40,58], eR:[60,46],hR:[60,58] })]},
-{id:'t3',cat:'여행',name:'점프샷',tip:'점프! 팔다리 활짝 펴기',
-  figs:[fig({ head:[50,16,8], n:[50,26],sL:[42,30],sR:[58,30], eL:[34,22],hL:[28,14], eR:[66,22],hR:[72,14],
-    hip:[50,50],hpL:[46,51],hpR:[54,51], kL:[40,66],kR:[60,66], fL:[34,80],fR:[66,80] })]},
-{id:'t4',cat:'여행',name:'길따라 원근',tip:'길 가운데 서서 소실점을 살려요',
-  figs:[fig({ head:[50,18,7], n:[50,28],sL:[44,32],sR:[56,32], eL:[40,44],hL:[38,56], eR:[60,44],hR:[62,56],
-    hip:[50,58],hpL:[47,59],hpR:[53,59], kL:[46,82],kR:[54,82], fL:[46,106],fR:[54,106] })]},
-{id:'t5',cat:'여행',name:'하늘로 손뻗기',tip:'한 손을 하늘 높이 뻗어요',
-  figs:[fig({ eL:[38,46],hL:[36,58], eR:[62,30],hR:[66,14] })]}
-];
-
-const CATS=['혼자','셀카','커플','단체','여행'];
-let curCat='혼자', curPose=POSES[0], flip=false, fillOn=true;
-let poseScale=0.42, poseX=0, poseY=0;   /* 크기 / 좌우·상하 이동(viewBox 단위) */
-const MINS=0.2, MAXS=1.25;
-let facing='environment', stream=null;
-let gridOn=false;
-
-const $=s=>document.querySelector(s);
-const overlay=$('#overlay'), cam=$('#cam');
-
-function svgForPose(p, dash=true, color='#fff', strokeW=1.1, withFill=false, fixedScale=null, noPan=false){
-  let inner='';
-  const scale=(fixedScale!=null)?fixedScale:poseScale; const cx=50;
-  const ox=noPan?0:poseX, oy=noPan?0:poseY;
-  p.figs.forEach(j=>{
-    const tx=v=> flip ? (cx*2 - v) : v;
-    const sc=(x,y)=>[ cx + (tx(x)-cx)*scale + ox, 65 + (y-65)*scale + oy ];
-    // fill underlay (반투명 채움) — 두꺼운 선 + 머리 채움
-    if(withFill){
-      const fc=getComputedStyle(document.body).getPropertyValue('--fillcol').trim()||'rgba(255,255,255,.15)';
-      const hd=j.head; const [hx,hy]=sc(hd[0],hd[1]);
-      inner+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${(hd[2]*scale*0.82).toFixed(1)}" fill="${fc}" stroke="none"/>`;
-      figurePaths(j).forEach(b=>{ const [x1,y1]=sc(b[0],b[1]); const [x2,y2]=sc(b[2],b[3]);
-        inner+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${fc}" stroke-width="${(strokeW*2.6).toFixed(1)}" stroke-linecap="round"/>`; });
-    }
-    const hd=j.head; const [hx,hy]=sc(hd[0],hd[1]);
-    inner+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${(hd[2]*scale).toFixed(1)}" fill="none" stroke="${color}" stroke-width="${strokeW}" ${dash?'stroke-dasharray="3 2.4"':''}/>`;
-    figurePaths(j).forEach(b=>{ const [x1,y1]=sc(b[0],b[1]); const [x2,y2]=sc(b[2],b[3]);
-      inner+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round" ${dash?'stroke-dasharray="3 2.4"':''}/>`; });
-    ['hL','hR','fL','fR'].forEach(k=>{ if(j[k]){const[px,py]=sc(j[k][0],j[k][1]);
-      inner+=`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${(1.1*scale).toFixed(1)}" fill="${color}"/>`; }});
-  });
-  return inner;
-}
-
-function renderOverlay(){
-  let g='';
-  if(gridOn){
-    g+=`<g stroke="rgba(255,255,255,.3)" stroke-width=".5"><line x1="33.3" y1="0" x2="33.3" y2="130"/>`+
-       `<line x1="66.6" y1="0" x2="66.6" y2="130"/><line x1="0" y1="43.3" x2="100" y2="43.3"/>`+
-       `<line x1="0" y1="86.6" x2="100" y2="86.6"/></g>`;
+    const s = document.createElement('script');
+    s.src = '//dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=' + KAKAO_KEY;
+    s.onload = () => kakao.maps.load(initMap);
+    document.head.appendChild(s);
   }
-  const dashCol=getComputedStyle(document.body).getPropertyValue('--dash').trim()||'#fff';
-  if(fillOn) g+=`<g>`+ svgForPose(curPose,false,'transparent',1.1,true) +`</g>`;
-  g+=`<g opacity=".85">`+ svgForPose(curPose,true,'rgba(0,0,0,.5)',2.0,false) +`</g>`;
-  g+=`<g>`+ svgForPose(curPose,true,dashCol,1.1,false) +`</g>`;
-  overlay.innerHTML=g;
-}
 
-function thumbSVG(p){
-  const sf=flip; flip=false;
-  const inner=svgForPose(p,false,'#fff',2.4,false,0.78,true);
-  flip=sf;
-  return `<svg viewBox="10 5 80 120" preserveAspectRatio="xMidYMid meet">${inner}</svg>`;
-}
+  function initMap() {
+    $('nokey').style.display = 'none';
 
-function buildCats(){
-  $('#cats').innerHTML=CATS.map(c=>`<div class="chip ${c===curCat?'on':''}" data-c="${c}">${c}</div>`).join('');
-  $('#cats').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{
-    curCat=el.dataset.c; curPose=POSES.find(p=>p.cat===curCat);
-    buildCats(); buildStrip(); selectPose(curPose);
-  });
-}
-function buildStrip(){
-  const list=POSES.filter(p=>p.cat===curCat);
-  $('#strip').innerHTML=list.map(p=>`<div class="pcard ${p.id===curPose.id?'on':''}" data-id="${p.id}">${thumbSVG(p)}</div>`).join('');
-  $('#strip').querySelectorAll('.pcard').forEach(el=>el.onclick=()=>selectPose(POSES.find(x=>x.id===el.dataset.id)));
-}
-function selectPose(p){
-  curPose=p;
-  $('#poseName').textContent=p.name; $('#poseTip').textContent=p.tip;
-  $('#strip').querySelectorAll('.pcard').forEach(el=>el.classList.toggle('on',el.dataset.id===p.id));
-  renderOverlay();
-}
+    // 기본 중심: 아주동 (거제)
+    map = new kakao.maps.Map($('map'), {
+      center: new kakao.maps.LatLng(34.876, 128.692),
+      level: 6
+    });
 
-/* 테마 전환 */
-$('#themes').querySelectorAll('.tbtn').forEach(el=>el.onclick=()=>{
-  document.body.className=el.dataset.t;
-  $('#themes').querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('on',b===el));
-  buildStrip(); renderOverlay(); introDemo();
-});
+    // 냉음식 핀 찍기
+    PLACES.forEach(p => {
+      const marker = new kakao.maps.Marker({
+        map,
+        position: new kakao.maps.LatLng(p.lat, p.lng),
+        title: p.name
+      });
+      kakao.maps.event.addListener(marker, 'click', () => openSheet(p));
+    });
 
-$('#gridBtn').onclick=()=>{ gridOn=!gridOn; $('#gridBtn').classList.toggle('on',gridOn); renderOverlay(); };
-$('#fillBtn').onclick=()=>{ fillOn=!fillOn; $('#fillBtn').classList.toggle('on',fillOn); renderOverlay(); };
-$('#flipPose').onclick=()=>{ flip=!flip; renderOverlay(); };
-$('#resetBtn').onclick=()=>{ poseX=0; poseY=0; renderOverlay(); };
-$('#hintBtn').onclick=()=>{ const d=$('#draghint'); d.classList.remove('gone'); clearTimeout(d._t); d._t=setTimeout(()=>d.classList.add('gone'),2600); };
+    $('cnum').textContent = PLACES.length;
 
-/* 크기 슬라이더 */
-const zoomRange=$('#zoomRange');
-zoomRange.addEventListener('input',()=>{ poseScale=zoomRange.value/100; renderOverlay(); });
-function syncZoom(){ zoomRange.value=Math.round(poseScale*100); }
+    // 지도 클릭 시 시트 닫기
+    kakao.maps.event.addListener(map, 'click', closeSheet);
 
-/* 드래그 이동 + 핀치 확대 (오버레이 위 터치) */
-const stage=$('#stage');
-let dragMode=null, startX=0, startY=0, startPX=0, startPY=0, startDist=0, startScale=0;
-function vbPerPx(){ const r=stage.getBoundingClientRect();
-  return 130 / r.height; }  /* slice 세로 기준: viewBox 130 ↔ 화면 높이 */
-function dist(t){ const dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.hypot(dx,dy); }
-stage.addEventListener('touchstart',e=>{
-  if(e.touches.length===1){ dragMode='pan'; startX=e.touches[0].clientX; startY=e.touches[0].clientY; startPX=poseX; startPY=poseY; }
-  else if(e.touches.length===2){ dragMode='pinch'; startDist=dist(e.touches); startScale=poseScale; }
-  hideDragHint();
-},{passive:true});
-stage.addEventListener('touchmove',e=>{
-  if(dragMode==='pan' && e.touches.length===1){
-    const k=vbPerPx();
-    poseX=startPX+(e.touches[0].clientX-startX)*k;
-    poseY=startPY+(e.touches[0].clientY-startY)*k;
-    renderOverlay();
-  }else if(dragMode==='pinch' && e.touches.length===2){
-    const r=dist(e.touches)/startDist;
-    poseScale=Math.min(MAXS,Math.max(MINS,startScale*r));
-    syncZoom(); renderOverlay();
+    locate(true);
   }
-},{passive:true});
-stage.addEventListener('touchend',e=>{ if(e.touches.length===0) dragMode=null; },{passive:true});
-/* 마우스 드래그(PC 테스트용) */
-let mDown=false;
-stage.addEventListener('mousedown',e=>{ mDown=true; dragMode='pan'; startX=e.clientX; startY=e.clientY; startPX=poseX; startPY=poseY; hideDragHint(); });
-window.addEventListener('mousemove',e=>{ if(!mDown) return; const k=vbPerPx();
-  poseX=startPX+(e.clientX-startX)*k; poseY=startPY+(e.clientY-startY)*k; renderOverlay(); });
-window.addEventListener('mouseup',()=>{ mDown=false; dragMode=null; });
 
-let dragHintShown=false;
-function hideDragHint(){ if(!dragHintShown){ dragHintShown=true; setTimeout(()=>$('#draghint').classList.add('gone'),200); } }
-setTimeout(()=>$('#draghint').classList.add('gone'),4000);
-
-function ensureOrientation(){
-  if(typeof DeviceOrientationEvent!=='undefined' && DeviceOrientationEvent.requestPermission){
-    DeviceOrientationEvent.requestPermission().catch(()=>{});
+  function openSheet(p) {
+    cur = p;
+    $('sThumb').textContent = p.icon;
+    $('sName').textContent = p.name;
+    $('sMeta').textContent = '거제시 · ' + p.addr;
+    $('sDish').textContent = '🧊 ' + p.dish;
+    $('sheet').classList.add('open');
+    map.panTo(new kakao.maps.LatLng(p.lat, p.lng));
   }
-}
+  function closeSheet() { $('sheet').classList.remove('open'); }
 
-async function startCam(){
-  $('#err').classList.remove('show');
-  if(!window.isSecureContext && location.protocol!=='http:'){ showCamError(true); return; }
-  try{
-    if(stream) stream.getTracks().forEach(t=>t.stop());
-    stream=await navigator.mediaDevices.getUserMedia({ video:{facingMode:facing,width:{ideal:1920},height:{ideal:1080}}, audio:false });
-    cam.srcObject=stream; cam.classList.toggle('mirror', facing==='user');
-  }catch(err){ showCamError(!window.isSecureContext); }
-}
-function showCamError(insecure){
-  const hint=$('#errHint');
-  if(insecure){
-    $('#errTitle').textContent='이렇게 열면 카메라가 안 돼요';
-    $('#errDesc').innerHTML='파일을 직접 열면 보안상<br>카메라를 켤 수 없어요.';
-    hint.style.display='block';
-    hint.innerHTML='<b>https 주소</b>로 열어야 작동해요.<br>토스 앱 안에서는 정상 작동하고,<br>테스트는 GitHub Pages 같은<br>https 주소에 올려서 열어주세요.';
-  }else{
-    $('#errTitle').textContent='카메라를 켤 수 없어요';
-    $('#errDesc').innerHTML='설정에서 카메라 권한을 허용한 뒤<br>다시 들어와 주세요.';
-    hint.style.display='none';
+  // GPS
+  function locate(silent) {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos => {
+      const loc = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+      if (myMarker) myMarker.setMap(null);
+      myMarker = new kakao.maps.Marker({
+        map,
+        position: loc,
+        image: new kakao.maps.MarkerImage(
+          'data:image/svg+xml;base64,' + btoa(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="7" fill="#0F9CB5" stroke="#fff" stroke-width="3"/></svg>'
+          ),
+          new kakao.maps.Size(24, 24)
+        )
+      });
+      if (!silent) map.panTo(loc);
+    }, () => {}, { enableHighAccuracy: true, timeout: 8000 });
   }
-  $('#err').classList.add('show');
-}
-$('#camFlip').onclick=()=>{ facing=facing==='user'?'environment':'user'; startCam(); };
-$('#retry').onclick=startCam;
 
-$('#shutter').onclick=()=>{
-  if(!stream) return;
-  const v=cam, c=document.createElement('canvas');
-  const vw=v.videoWidth||1080, vh=v.videoHeight||1920;
-  c.width=vw; c.height=vh; const ctx=c.getContext('2d');
-  if(facing==='user'){ ctx.translate(vw,0); ctx.scale(-1,1); }
-  ctx.drawImage(v,0,0,vw,vh);
-  if(document.body.classList.contains('t-film')){ ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='rgba(120,84,30,.18)'; ctx.fillRect(0,0,vw,vh); }
-  const data=c.toDataURL('image/jpeg',0.92);
-  $('#shot').src=data; lastShot=data;
-  const fl=$('#flash'); fl.style.transition='none'; fl.style.opacity='.85';
-  requestAnimationFrame(()=>{ fl.style.transition='opacity .4s'; fl.style.opacity='0'; });
-  setTimeout(()=>$('#sheet').classList.add('show'),140);
-};
-let lastShot=null;
-$('#retake').onclick=()=>$('#sheet').classList.remove('show');
-$('#save').onclick=()=>{
-  if(!lastShot) return;
-  const base64=lastShot.split(',')[1];
-  try{
-    if(window.ReactNativeWebView){ window.ReactNativeWebView.postMessage(JSON.stringify({type:'SAVE_IMAGE',data:base64})); }
-    else if(window.parent && window.parent!==window){ window.parent.postMessage(JSON.stringify({type:'SAVE_IMAGE',data:base64}),'*'); }
-    else{ const a=document.createElement('a'); a.href=lastShot; a.download='포즈따라_'+Date.now()+'.jpg'; a.click(); }
-  }catch(e){ const a=document.createElement('a'); a.href=lastShot; a.download='posecam_'+Date.now()+'.jpg'; a.click(); }
-  $('#sheet').classList.remove('show');
-};
-window.addEventListener('message',ev=>{ try{ const m=typeof ev.data==='string'?JSON.parse(ev.data):ev.data;
-  if(m&&m.type==='SAVE_RESULT'){} }catch(e){} });
+  $('gps').onclick = () => locate(false);
 
-function introDemo(){
-  const demo=document.querySelector('#intro .i-demo');
-  const sf=flip; flip=false;
-  const ac=getComputedStyle(document.body).getPropertyValue('--accent').trim()||'#FF2E63';
-  demo.innerHTML=svgForPose(POSES[0],true,ac,2.0,false,0.78,true);
-  flip=sf;
-}
+  // 카카오맵 길찾기 딥링크
+  $('kakaoBtn').onclick = () => {
+    if (!cur) return;
+    const url = 'https://map.kakao.com/link/to/' +
+                encodeURIComponent(cur.name) + ',' + cur.lat + ',' + cur.lng;
+    window.open(url, '_blank');
+  };
 
-$('#startBtn').onclick=async()=>{ $('#intro').classList.add('hide'); ensureOrientation(); await startCam(); };
-
-buildCats(); buildStrip(); selectPose(POSES[0]); introDemo(); syncZoom();
+  boot();
 </script>
 </body>
 </html>
