@@ -3,158 +3,148 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>냉 - 내 주변 냉음식 지도 v0.1</title>
+<title>냉 - 내 주변 냉음식 지도 v0.3</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
   body { background: #E8F7FA; overflow: hidden; }
 
-  /* ===== 색상 시스템 (시원한 청록) ===== */
   :root {
     --primary: #0F9CB5;
     --primary-dark: #0B7A8F;
     --primary-light: #6FD6E4;
     --ink: #143038;
     --sub: #5A7982;
-    --card-bg: #FFFFFF;
     --shadow: 0 6px 24px rgba(15,124,143,.18);
+    --shadow-lg: 0 10px 34px rgba(15,124,143,.22);
   }
 
-  #app { position: relative; width: 100%; height: 100%; }
+  #app {
+    position: relative; width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    padding: 14px 12px calc(14px + env(safe-area-inset-bottom));
+    gap: 12px;
+  }
 
-  /* ===== 상단 헤더 ===== */
-  #header {
-    position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+  /* ===== 제목바 ===== */
+  #titlebar {
     display: flex; align-items: center; gap: 8px;
-    padding: 14px 16px;
-    background: linear-gradient(180deg, rgba(232,247,250,.98) 40%, rgba(232,247,250,0));
-    pointer-events: none;
+    padding: 4px 6px; flex-shrink: 0;
   }
-  #title {
-    display: flex; align-items: center; gap: 8px;
-    background: #fff; border-radius: 14px;
-    padding: 10px 16px; box-shadow: var(--shadow);
-    font-size: 17px; font-weight: 800; color: var(--ink);
-    pointer-events: auto;
+  #titlebar .ico { font-size: 22px; }
+  #titlebar .txt { font-size: 19px; font-weight: 800; color: var(--ink); }
+
+  /* ===== 지도 카드 (라운드 박스) ===== */
+  #mapCard {
+    position: relative; flex: 1; min-height: 0;
+    border-radius: 20px; overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    background: #D6EEF3;
   }
-  #title .ice { font-size: 20px; }
+  #map { width: 100%; height: 100%; }
 
-  /* ===== 지도 ===== */
-  #map { width: 100%; height: 100%; background: #D6EEF3; }
-
-  /* ===== SDK 미로드 안내 ===== */
   #nokey {
     position: absolute; inset: 0; z-index: 5;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 14px; padding: 40px; text-align: center; color: var(--sub);
+    gap: 12px; padding: 30px; text-align: center; color: var(--sub);
     background: #E8F7FA;
   }
-  #nokey .big { font-size: 42px; }
+  #nokey .big { font-size: 40px; }
   #nokey .t { font-size: 15px; font-weight: 700; line-height: 1.55; color: var(--ink); }
   #nokey .s { font-size: 13px; font-weight: 600; line-height: 1.55; }
   #nokey code { background:#fff; padding:2px 6px; border-radius:8px; color:var(--primary-dark); font-weight:700; }
 
-  /* ===== GPS 버튼 ===== */
   #gps {
-    position: absolute; right: 16px; bottom: 190px; z-index: 15;
-    width: 52px; height: 52px; border-radius: 50%;
+    position: absolute; right: 12px; top: 12px; z-index: 15;
+    width: 46px; height: 46px; border-radius: 50%;
     background: #fff; border: none; box-shadow: var(--shadow);
     display: flex; align-items: center; justify-content: center;
-    font-size: 24px; cursor: pointer;
+    font-size: 26px; font-weight: 700; line-height: 1; color: var(--primary);
+    cursor: pointer;
   }
   #gps:active { transform: scale(.94); }
 
-  /* ===== 하단 식당 카드 (바텀시트) ===== */
-  #sheet {
-    position: absolute; left: 0; right: 0; bottom: 0; z-index: 18;
-    background: var(--card-bg);
-    border-radius: 24px 24px 0 0;
-    box-shadow: 0 -6px 28px rgba(15,124,143,.22);
-    padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
-    transform: translateY(110%);
-    transition: transform .28s cubic-bezier(.22,.8,.3,1);
-  }
-  #sheet.open { transform: translateY(0); }
-  #sheet .grip { width: 40px; height: 4px; border-radius: 4px; background: #CBE4EA; margin: 4px auto 12px; }
-
-  .row { display: flex; gap: 14px; align-items: center; }
-  .thumb {
-    width: 60px; height: 60px; border-radius: 16px; flex-shrink: 0;
-    background: linear-gradient(135deg, var(--primary-light), var(--primary));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 30px; color: #fff;
-  }
-  .info { flex: 1; min-width: 0; }
-  .name { font-size: 18px; font-weight: 800; color: var(--ink); }
-  .meta { font-size: 14px; font-weight: 600; color: var(--sub); margin-top: 3px; }
-  .dish { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 10px;
-          background: #E0F5F8; color: var(--primary-dark); font-size: 13px; font-weight: 700; }
-
-  #kakaoBtn {
-    display: block; width: 100%; margin-top: 14px;
-    padding: 15px; border: none; border-radius: 14px;
-    background: var(--primary); color: #fff;
-    font-size: 16px; font-weight: 800; cursor: pointer;
-  }
-  #kakaoBtn:active { background: var(--primary-dark); }
-
-  /* ===== 리스트 카운트 배지 ===== */
   #count {
-    position: absolute; left: 16px; bottom: 24px; z-index: 15;
-    background: #fff; border-radius: 12px; padding: 10px 14px;
+    position: absolute; left: 12px; top: 12px; z-index: 15;
+    background: #fff; border-radius: 12px; padding: 8px 12px;
     box-shadow: var(--shadow); font-size: 14px; font-weight: 700; color: var(--ink);
   }
   #count b { color: var(--primary-dark); }
+
+  /* ===== 하단 가로 스와이프 카드 ===== */
+  #cards {
+    flex-shrink: 0;
+    display: flex; gap: 12px;
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 2px 2px;
+    scrollbar-width: none;
+  }
+  #cards::-webkit-scrollbar { display: none; }
+
+  .card {
+    scroll-snap-align: center;
+    flex: 0 0 calc(100% - 40px);
+    background: #fff; border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .card .top { display: flex; gap: 14px; align-items: center; }
+  .thumb {
+    width: 58px; height: 58px; border-radius: 16px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+  }
+  .info { flex: 1; min-width: 0; }
+  .name { font-size: 18px; font-weight: 800; color: var(--ink);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { font-size: 14px; font-weight: 600; color: var(--sub); margin-top: 3px; }
+  .dish { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 10px;
+          background: #E0F5F8; color: var(--primary-dark); font-size: 13px; font-weight: 700; }
+  .btn {
+    padding: 14px; border: none; border-radius: 14px;
+    background: var(--primary); color: #fff;
+    font-size: 16px; font-weight: 800; cursor: pointer;
+  }
+  .btn:active { background: var(--primary-dark); }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="header">
-    <div id="title"><span class="ice">🧊</span>내 주변 냉음식</div>
+  <div id="titlebar">
+    <span class="ico">🧊</span>
+    <span class="txt">내 주변 냉음식</span>
   </div>
 
-  <div id="map"></div>
-
-  <div id="nokey">
-    <div class="big">🗺️</div>
-    <div class="t">카카오맵 키를 넣어주세요</div>
-    <div class="s">
-      GitHub Pages에 올린 뒤<br>
-      카카오 개발자 콘솔에서 도메인 등록 →<br>
-      JavaScript 키를 <code>KAKAO_KEY</code> 자리에 입력
-    </div>
-  </div>
-
-  <button id="gps" title="내 위치">📍</button>
-  <div id="count">🧊 냉음식 <b id="cnum">0</b>곳</div>
-
-  <div id="sheet">
-    <div class="grip"></div>
-    <div class="row">
-      <div class="thumb" id="sThumb">🍜</div>
-      <div class="info">
-        <div class="name" id="sName">-</div>
-        <div class="meta" id="sMeta">-</div>
-        <div class="dish" id="sDish">-</div>
+  <div id="mapCard">
+    <div id="map"></div>
+    <div id="count">🧊 냉음식 <b id="cnum">0</b>곳</div>
+    <button id="gps" title="내 위치">◎</button>
+    <div id="nokey">
+      <div class="big">🗺️</div>
+      <div class="t">카카오맵 키를 넣어주세요</div>
+      <div class="s">
+        GitHub Pages 도메인을<br>
+        카카오 콘솔에 등록 →<br>
+        JavaScript 키를 <code>KAKAO_KEY</code>에 입력
       </div>
     </div>
-    <button id="kakaoBtn">카카오맵으로 길찾기 →</button>
   </div>
+
+  <div id="cards"></div>
 </div>
 
 <script>
 /* =========================================================
-   냉음식 지도 v0.1
-   ---------------------------------------------------------
-   [해야 할 일]
-   1) 이 파일을 GitHub 레포에 올리고 Pages 켜기
-   2) 카카오 개발자 콘솔(developers.kakao.com)에서 앱 생성
-      → 플랫폼 > Web > 사이트 도메인에 https://아이디.github.io 등록
-   3) 아래 KAKAO_KEY 에 JavaScript 키 붙여넣기
+   냉음식 지도 v0.3
+   - 라운드 지도박스 + 하단 가로 스와이프 카드
+   - 카드 넘기면 지도가 해당 식당으로 이동
    ========================================================= */
-  const KAKAO_KEY = 'b2e63e83f6f056f7c4d525b8b503b686'; // ← 여기에 카카오 JavaScript 키 입력
+  const KAKAO_KEY = 'b2e63e83f6f056f7c4d525b8b503b686';
 
-  // 거제 냉음식 데이터 (검색 결과 임베드)
   const PLACES = [
     { name:'고메밀면 아주점', lat:34.8675089, lng:128.6891044, dish:'밀면', icon:'🍜', addr:'아주1로4길 21' },
     { name:'거제명가',       lat:34.867917,  lng:128.6793342, dish:'냉면', icon:'🍜', addr:'아주1로 64' },
@@ -164,11 +154,10 @@
   ];
 
   const $ = id => document.getElementById(id);
-  let map, myMarker, cur = null;
+  let map, myMarker, markers = [], curIdx = -1;
 
   function boot() {
-    if (!KAKAO_KEY) return; // 키 없으면 안내 화면 유지
-
+    if (!KAKAO_KEY) return;
     const s = document.createElement('script');
     s.src = '//dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=' + KAKAO_KEY;
     s.onload = () => kakao.maps.load(initMap);
@@ -178,53 +167,79 @@
   function initMap() {
     $('nokey').style.display = 'none';
 
-    // 기본 중심: 아주동 (거제)
     map = new kakao.maps.Map($('map'), {
       center: new kakao.maps.LatLng(34.876, 128.692),
       level: 6
     });
 
-    // 냉음식 핀 찍기
-    PLACES.forEach(p => {
+    PLACES.forEach((p, i) => {
       const marker = new kakao.maps.Marker({
         map,
         position: new kakao.maps.LatLng(p.lat, p.lng),
         title: p.name
       });
-      kakao.maps.event.addListener(marker, 'click', () => openSheet(p));
+      kakao.maps.event.addListener(marker, 'click', () => focusPlace(i, true));
+      markers.push(marker);
     });
 
     $('cnum').textContent = PLACES.length;
-
-    // 지도 클릭 시 시트 닫기
-    kakao.maps.event.addListener(map, 'click', closeSheet);
-
+    buildCards();
     locate(true);
   }
 
-  function openSheet(p) {
-    cur = p;
-    $('sThumb').textContent = p.icon;
-    $('sName').textContent = p.name;
-    $('sMeta').textContent = '거제시 · ' + p.addr;
-    $('sDish').textContent = '🧊 ' + p.dish;
-    $('sheet').classList.add('open');
-    map.panTo(new kakao.maps.LatLng(p.lat, p.lng));
-  }
-  function closeSheet() { $('sheet').classList.remove('open'); }
+  function buildCards() {
+    const wrap = $('cards');
+    PLACES.forEach((p, i) => {
+      const c = document.createElement('div');
+      c.className = 'card';
+      c.dataset.idx = i;
+      c.innerHTML =
+        '<div class="top">' +
+          '<div class="thumb">' + p.icon + '</div>' +
+          '<div class="info">' +
+            '<div class="name">' + p.name + '</div>' +
+            '<div class="meta">거제시 · ' + p.addr + '</div>' +
+            '<div class="dish">🧊 ' + p.dish + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="btn">카카오맵으로 길찾기 →</button>';
+      c.querySelector('.btn').onclick = () => openKakao(p);
+      wrap.appendChild(c);
+    });
 
-  // GPS
+    let t;
+    wrap.addEventListener('scroll', () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        const cw = wrap.querySelector('.card').offsetWidth + 12;
+        const idx = Math.round(wrap.scrollLeft / cw);
+        if (idx !== curIdx) focusPlace(idx, false);
+      }, 90);
+    });
+  }
+
+  function focusPlace(i, scrollCard) {
+    if (i < 0 || i >= PLACES.length) return;
+    curIdx = i;
+    const p = PLACES[i];
+    map.panTo(new kakao.maps.LatLng(p.lat, p.lng));
+    if (scrollCard) {
+      const wrap = $('cards');
+      const card = wrap.querySelector('.card[data-idx="' + i + '"]');
+      if (card) wrap.scrollTo({ left: card.offsetLeft - 20, behavior: 'smooth' });
+    }
+  }
+
   function locate(silent) {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(pos => {
       const loc = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
       if (myMarker) myMarker.setMap(null);
       myMarker = new kakao.maps.Marker({
-        map,
-        position: loc,
+        map, position: loc,
         image: new kakao.maps.MarkerImage(
           'data:image/svg+xml;base64,' + btoa(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="7" fill="#0F9CB5" stroke="#fff" stroke-width="3"/></svg>'
+            '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="7" fill="#E63946" stroke="#fff" stroke-width="3"/></svg>'
           ),
           new kakao.maps.Size(24, 24)
         )
@@ -235,13 +250,11 @@
 
   $('gps').onclick = () => locate(false);
 
-  // 카카오맵 길찾기 딥링크
-  $('kakaoBtn').onclick = () => {
-    if (!cur) return;
+  function openKakao(p) {
     const url = 'https://map.kakao.com/link/to/' +
-                encodeURIComponent(cur.name) + ',' + cur.lat + ',' + cur.lng;
+                encodeURIComponent(p.name) + ',' + p.lat + ',' + p.lng;
     window.open(url, '_blank');
-  };
+  }
 
   boot();
 </script>
