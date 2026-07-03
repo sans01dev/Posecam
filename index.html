@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>무더위 대피 지도 v0.2</title>
+<title>무더위 대피 지도 v0.4</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
@@ -28,40 +28,32 @@
   #nokey .t { font-size: 15px; font-weight: 700; line-height: 1.55; color: var(--ink); }
   #nokey code { background:#fff; padding:2px 6px; border-radius:8px; color:var(--blue-dark); font-weight:700; }
 
-  /* ===== 상단 오버레이 (헤더 + 필터) ===== */
-  #top { position: absolute; top: 0; left: 0; right: 0; z-index: 16;
-         padding: 12px 12px 0; }
+  /* ===== 상단 제목바 (한 줄) ===== */
+  #titlebar { position: absolute; top: 12px; left: 12px; z-index: 16;
+              background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+              border-radius: 14px; box-shadow: var(--shadow-lg);
+              padding: 11px 16px; display: flex; align-items: center; gap: 7px; }
+  #titlebar .e { font-size: 17px; }
+  #titlebar .t { font-size: 16px; font-weight: 900; color: #fff; letter-spacing: -.4px; white-space: nowrap; }
 
-  /* 폭염 배너 헤더 */
-  #header { background: linear-gradient(135deg, var(--blue), var(--blue-dark));
-            border-radius: 18px; box-shadow: var(--shadow-lg); padding: 13px 16px; }
-  #header .row1 { display: flex; align-items: center; gap: 7px; }
-  #header .badge { display: inline-flex; align-items: center; gap: 4px;
-                   background: var(--alert); color: #fff; font-size: 12px; font-weight: 800;
-                   padding: 3px 9px; border-radius: 8px; }
-  #header .temp { font-size: 13px; font-weight: 700; color: #DCE9FF; margin-left: auto; }
-  #header .title { font-size: 21px; font-weight: 900; color: #fff; margin-top: 6px; letter-spacing: -.5px; }
-
-  /* 필터 (2줄 그리드) */
-  #filters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 10px; }
-  .chip { padding: 9px 4px; border-radius: 12px; border: none;
-          background: rgba(255,255,255,.94); color: var(--sub); font-size: 13px; font-weight: 800;
-          display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;
-          box-shadow: var(--shadow); transition: all .15s; white-space: nowrap; }
+  /* ===== 좌측 세로 필터 레일 ===== */
+  #filters { position: absolute; left: 12px; top: 66px; z-index: 16;
+             display: flex; flex-direction: column; gap: 6px; }
+  .chip { width: 56px; padding: 8px 2px; border-radius: 12px; border: none;
+          background: rgba(255,255,255,.95); color: var(--sub); font-size: 11px; font-weight: 800;
+          display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;
+          box-shadow: var(--shadow); transition: all .15s; }
   .chip.on { background: var(--blue); color: #fff; }
-  .chip .e { font-size: 14px; }
-  .chip .in { font-size: 9px; font-weight: 800; padding: 1px 4px; border-radius: 5px;
-              background: #DCE9FF; color: var(--blue-dark); }
-  .chip.on .in { background: rgba(255,255,255,.25); color: #fff; }
+  .chip .e { font-size: 18px; }
 
   /* ===== 우측 버튼 ===== */
-  #binoc { position: absolute; right: 16px; top: 210px; z-index: 15; width: 50px; height: 50px;
+  #binoc { position: absolute; right: 16px; top: 66px; z-index: 15; width: 48px; height: 48px;
            border-radius: 50%; background: #17233A; border: none; box-shadow: 0 6px 18px rgba(0,0,0,.28);
            display: flex; align-items: center; justify-content: center; cursor: pointer; }
   #binoc:active { transform: scale(.94); }
-  #gps { position: absolute; right: 16px; top: 270px; z-index: 15; width: 46px; height: 46px;
+  #gps { position: absolute; right: 16px; top: 122px; z-index: 15; width: 44px; height: 44px;
          border-radius: 50%; background: #fff; border: none; box-shadow: var(--shadow);
-         display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700;
+         display: flex; align-items: center; justify-content: center; font-size: 23px; font-weight: 700;
          line-height: 1; color: var(--blue); cursor: pointer; }
   #gps:active { transform: scale(.94); }
 
@@ -120,22 +112,17 @@
     <div class="t">JavaScript 키를 <code>KAKAO_KEY</code>에 입력</div>
   </div>
 
-  <div id="top">
-    <div id="header">
-      <div class="row1">
-        <span class="badge" id="alertBadge">🌡️ 폭염주의보</span>
-        <span class="temp" id="tempTxt">체감 —°</span>
-      </div>
-      <div class="title">무더위 대피 지도</div>
-    </div>
-    <div id="filters">
-      <button class="chip on" data-kw="무더위쉼터" data-t="무더위쉼터" data-e="🏠" data-io="indoor" data-embed="1"><span class="e">🏠</span>쉼터<span class="in">실내</span></button>
-      <button class="chip" data-kw="도서관" data-t="도서관" data-e="📚" data-io="indoor"><span class="e">📚</span>도서관<span class="in">실내</span></button>
-      <button class="chip" data-kw="대형마트" data-t="마트" data-e="🏪" data-io="indoor"><span class="e">🏪</span>마트<span class="in">실내</span></button>
-      <button class="chip" data-kw="지하철역" data-t="지하철" data-e="🚇" data-io="indoor"><span class="e">🚇</span>지하철<span class="in">실내</span></button>
-      <button class="chip" data-kw="공원" data-t="그늘·공원" data-e="🌳" data-io="outdoor"><span class="e">🌳</span>그늘<span class="in">야외</span></button>
-      <button class="chip" data-kw="분수대,물놀이" data-t="분수대" data-e="⛲" data-io="outdoor"><span class="e">⛲</span>분수대<span class="in">야외</span></button>
-    </div>
+  <div id="titlebar">
+    <span class="e">🌡️</span><span class="t">무더위 대피 지도</span>
+  </div>
+
+  <div id="filters">
+    <button class="chip on" data-kw="무더위쉼터" data-t="무더위쉼터" data-e="🏠" data-io="indoor" data-embed="1"><span class="e">🏠</span>쉼터</button>
+    <button class="chip" data-kw="도서관" data-t="도서관" data-e="📚" data-io="indoor"><span class="e">📚</span>도서관</button>
+    <button class="chip" data-kw="대형마트" data-t="마트" data-e="🏪" data-io="indoor"><span class="e">🏪</span>마트</button>
+    <button class="chip" data-kw="지하철역" data-t="지하철" data-e="🚇" data-io="indoor"><span class="e">🚇</span>지하철</button>
+    <button class="chip" data-kw="공원" data-t="그늘·공원" data-e="🌳" data-io="outdoor"><span class="e">🌳</span>그늘</button>
+    <button class="chip" data-kw="분수대,물놀이" data-t="분수대" data-e="⛲" data-io="outdoor"><span class="e">⛲</span>분수대</button>
   </div>
 
   <button id="binoc" title="전체 보기"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5.5h3l1 2v7a2.5 2.5 0 0 1-5 0v-6.5a2 2 0 0 1 0-2.5z"></path><path d="M17 5.5h-3l-1 2v7a2.5 2.5 0 0 0 5 0v-6.5a2 2 0 0 0 0-2.5z"></path><line x1="11" y1="11" x2="13" y2="11"></line></svg></button>
@@ -166,7 +153,7 @@
   let map, ps, myMarker, markers = [], curIdx = -1, myLoc = null;
   let list = [], filter = { kw:'무더위쉼터', t:'무더위쉼터', e:'🏠', io:'indoor', embed:true };
   let PIN_IN, PIN_OUT, PIN_SEL;
-  let ignoreUntil = 0, searchTimer = null;
+  let ignoreUntil = 0, searchTimer = null, ignoreCardScrollUntil = 0;
 
   function suppressIdle(ms){ ignoreUntil = Date.now() + (ms || 900); }
   function scheduleSearch(){ clearTimeout(searchTimer); searchTimer = setTimeout(search, 400); }
@@ -209,9 +196,21 @@
       scheduleSearch();
     });
 
+    // 카드 스크롤 리스너 (1회만 등록, 리빌드 직후 스크롤은 무시)
+    let st;
+    $('cards').addEventListener('scroll',()=>{
+      if(Date.now()<ignoreCardScrollUntil) return;
+      clearTimeout(st);
+      st=setTimeout(()=>{
+        const el=$('cards').querySelector('.card'); if(!el)return;
+        const idx=Math.round($('cards').scrollLeft/(el.offsetWidth+12));
+        if(idx!==curIdx) focusPlace(idx,false);
+      },100);
+    });
+
     // 시작 시 1회 내 위치로
     locate(false, ()=>{
-      if(myLoc){ suppressIdle(1200); map.setCenter(new kakao.maps.LatLng(myLoc.lat,myLoc.lng)); }
+      if(myLoc){ suppressIdle(1500); map.setCenter(new kakao.maps.LatLng(myLoc.lat,myLoc.lng)); }
       scheduleSearch();
     });
   }
@@ -273,6 +272,7 @@
 
   function buildCards(){
     const wrap=$('cards'); wrap.innerHTML='';
+    ignoreCardScrollUntil = Date.now() + 400; // 리빌드로 인한 스크롤 리셋 무시
     if(!list.length){
       wrap.innerHTML='<div class="empty"><div class="et">'+filter.e+' 주변에 없어요</div>'+
         '<div class="es">3km 안에 '+filter.t+'가<br>검색되지 않았어요</div></div>';
@@ -296,12 +296,7 @@
       c.querySelector('.go').onclick=e=>{e.stopPropagation();openKakao(p);};
       wrap.appendChild(c);
     });
-    let t;
-    wrap.addEventListener('scroll',()=>{clearTimeout(t);t=setTimeout(()=>{
-      const el=wrap.querySelector('.card'); if(!el)return;
-      const idx=Math.round(wrap.scrollLeft/(el.offsetWidth+12));
-      if(idx!==curIdx) focusPlace(idx,false);
-    },90);});
+    wrap.scrollLeft = 0;
     updateTravel();
   }
 
@@ -325,7 +320,7 @@
     }
     curIdx=i; markers[i].setImage(PIN_SEL);
     const p=list[i];
-    suppressIdle(1000);
+    suppressIdle(1500);
     map.panTo(new kakao.maps.LatLng(p.lat,p.lng));
     if(scrollCard){
       const wrap=$('cards'), card=wrap.querySelector('.card[data-idx="'+i+'"]');
@@ -337,7 +332,7 @@
     const b=new kakao.maps.LatLngBounds();
     list.forEach(p=>b.extend(new kakao.maps.LatLng(p.lat,p.lng)));
     if(myLoc) b.extend(new kakao.maps.LatLng(myLoc.lat,myLoc.lng));
-    suppressIdle(1000);
+    suppressIdle(1500);
     map.setBounds(b);
   }
 
