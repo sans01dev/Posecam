@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>무더위 대피 지도 v0.6</title>
+<title>무더위 대피 지도 v0.7</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
@@ -28,16 +28,24 @@
   #nokey .t { font-size: 15px; font-weight: 700; line-height: 1.55; color: var(--ink); }
   #nokey code { background:#fff; padding:2px 6px; border-radius:8px; color:var(--blue-dark); font-weight:700; }
 
-  /* ===== 상단 제목바 (한 줄) ===== */
+  /* ===== 상단 제목바 (제목 + 폭염지수) ===== */
   #titlebar { position: absolute; top: 12px; left: 12px; z-index: 16;
-              background: rgba(37,99,235,.72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-              border-radius: 12px; box-shadow: var(--shadow);
-              padding: 8px 12px; display: flex; align-items: center; gap: 5px; }
+              background: rgba(37,99,235,.74); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+              border-radius: 13px; box-shadow: var(--shadow);
+              padding: 8px 13px; display: flex; flex-direction: column; gap: 2px; }
+  #titlebar .r1 { display: flex; align-items: center; gap: 5px; }
   #titlebar .e { font-size: 13px; }
   #titlebar .t { font-size: 13px; font-weight: 800; color: #fff; letter-spacing: -.3px; white-space: nowrap; }
+  #titlebar .heat { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #titlebar .temp { font-size: 14px; font-weight: 900; color: #fff; }
+  #titlebar .lvl { font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 7px;
+                   background: rgba(255,255,255,.22); color: #fff; }
+  #titlebar .lvl.warn { background: #FBBF24; color: #7C2D12; }
+  #titlebar .lvl.alert { background: var(--alert); color: #fff; }
+  #titlebar .lvl.danger { background: #DC2626; color: #fff; }
 
   /* ===== 좌측 세로 필터 레일 ===== */
-  #filters { position: absolute; left: 12px; top: 52px; z-index: 16;
+  #filters { position: absolute; left: 12px; top: 78px; z-index: 16;
              display: flex; flex-direction: column; gap: 5px; }
   .chip { width: 46px; padding: 6px 2px; border-radius: 10px; border: none;
           background: rgba(255,255,255,.7); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
@@ -114,7 +122,8 @@
   </div>
 
   <div id="titlebar">
-    <span class="e">🌡️</span><span class="t">무더위 대피 지도</span>
+    <div class="r1"><span class="e">🌡️</span><span class="t">무더위 대피 지도</span></div>
+    <div class="heat"><span class="temp" id="heatTemp">체감 —°</span><span class="lvl" id="heatLvl">확인 중</span></div>
   </div>
 
   <div id="filters">
@@ -154,7 +163,7 @@
   let map, ps, myMarker, markers = [], curIdx = -1, myLoc = null;
   let list = [], filter = { kw:'무더위쉼터', t:'무더위쉼터', e:'🏠', io:'indoor', embed:true };
   let PIN_IN, PIN_OUT, PIN_SEL;
-  let ignoreUntil = 0, searchTimer = null, ignoreCardScrollUntil = 0;
+  let ignoreUntil = 0, searchTimer = null, ignoreCardScrollUntil = 0, heatLoaded = false;
 
   function suppressIdle(ms){ ignoreUntil = Date.now() + (ms || 900); }
   function scheduleSearch(){ clearTimeout(searchTimer); searchTimer = setTimeout(search, 400); }
@@ -352,6 +361,7 @@
           new kakao.maps.Size(22,22),{offset:new kakao.maps.Point(11,11)})});
       if(moveMap){ suppressIdle(1000); map.panTo(loc); }
       updateTravel();
+      if(!heatLoaded){ heatLoaded = true; loadHeat(myLoc.lat, myLoc.lng); }
       if(cb) cb();
     },()=>{ $('locbar').classList.add('on'); if(cb)cb(); },{enableHighAccuracy:true,timeout:8000});
   }
@@ -371,6 +381,33 @@
 
   function openKakao(p){
     window.open('https://map.kakao.com/link/to/'+encodeURIComponent(p.name)+','+p.lat+','+p.lng,'_blank');
+  }
+
+  // ===== 폭염 지수 (Open-Meteo, 키 없음) =====
+  // 기상청 여름철 체감온도 공식 (2022.6.2~)
+  function feelsLike(Ta, RH){
+    // Stull 습구온도 추정식
+    const Tw = Ta*Math.atan(0.151977*Math.pow(RH+8.313659,0.5))
+             + Math.atan(Ta+RH) - Math.atan(RH-1.67633)
+             + 0.00391838*Math.pow(RH,1.5)*Math.atan(0.023101*RH) - 4.686035;
+    return -0.2442 + 0.55399*Tw + 0.45535*Ta - 0.0022*Tw*Tw + 0.00278*Tw*Ta + 3.0;
+  }
+
+  function loadHeat(lat, lng){
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+
+                '&current=temperature_2m,relative_humidity_2m&timezone=Asia%2FSeoul';
+    fetch(url).then(r=>r.json()).then(d=>{
+      const c = d && d.current; if(!c) return;
+      const Ta = c.temperature_2m, RH = c.relative_humidity_2m;
+      const feel = Math.round(feelsLike(Ta, RH));
+      $('heatTemp').textContent = '체감 ' + feel + '°';
+      const el = $('heatLvl');
+      el.className = 'lvl';
+      if(feel >= 38){ el.textContent='위험'; el.classList.add('danger'); }
+      else if(feel >= 35){ el.textContent='폭염경보'; el.classList.add('alert'); }
+      else if(feel >= 33){ el.textContent='폭염주의보'; el.classList.add('warn'); }
+      else { el.textContent = Math.round(Ta)+'°'; }
+    }).catch(()=>{ $('heatLvl').textContent='—'; });
   }
 
   boot();
