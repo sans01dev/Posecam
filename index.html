@@ -1,9 +1,48 @@
 <!DOCTYPE html>
+<!--
+================================================================
+  고마운돌 (Thankstone) — 고마움과 칭찬으로 하는 긍정 미니 SNS
+  현재 버전: v0.9  (2026-07-07)
+  브랜드: sans | 플랫폼: Toss 앱인토스(ait) | 단일 HTML, 무의존성
+  서버: Firebase Realtime DB (REST fetch) — path: thankstone_field
+================================================================
+  [변경 로그]
+  v0.9 (2026-07-07)
+    - 관심사 블록 위치 이동: 고마워요·칭찬해요 아래 → 구분선 → [장르·제목·공감]
+  v0.8 (2026-07-07)
+    - "요즘 빠진 것"(관심사) 기능: 새기기 화면에 구분선+장르선택+제목(선택)
+      장르 9종 목록(드라마/영화/음악/책/웹툰/게임/음식/장소/기타)
+    - 피드 카드에 관심사 블록[장르·제목] 표시(선택 시만)+공감 버튼(empathies)
+    - 액션영역 공감버튼 → 관심사 블록 공감으로 이동(중복 정리)
+  v0.7 (2026-07-07)
+    - 피드 카드에 "공감해요" 반응 버튼 추가(3번째) — empathies 필드
+      고마워요(하트)+칭찬해요(엄지)+공감해요(별), 각 중복방지·Firebase 저장
+  v0.6 (2026-07-07)
+    - 고마움 밭 카드 폭 조정(84%), 위쪽 정렬로 여백 정리
+    - 틱톡식 스와이프 피드: scroll-snap + 다음 카드 peek(58vh 카드)
+    - 오늘의 질문(15개 날짜순환) 작성 화면 상단 추가 — 재방문 훅
+    - 칭찬 버튼 추가: 고마워요(하트)+칭찬해요(엄지), praises 필드
+  v0.5
+    - 닉네임 아래 한 줄 소개(bio) 추가, 로컬 저장
+    - 돌 표정·색상 다양화(눈5×입5×색10) 피드/프로필 전체 적용
+    - 프로필 돌탑 상단 고정(통계·닉네임·색상), 시트 방식 제거
+    - 자동 닉네임(형용사+명사+타임스탬프 꼬리) — 서버 무충돌
+    - Firebase 실연동(fbAdd/fbFetchAll/fbPatch), 피드 캐시 제거(매번 갱신)
+    - 피드 정렬 3종(최신/인기/랜덤)+더보기, 랜덤 추출
+  v0.4
+    - 고마움 밭(남의 고마움 피드) 신설 + 하트(함께 고마워하기)+신고
+    - 회상 배너(A)+받은 하트(B) 재방문 훅
+    - 인트로 중앙정렬, 핀치줌 차단, FAB(항상 새기기 진입)
+    - 공유 카드 canvas 세로 균형(돌↔문구 겹침 해결)
+  v0.3 이하: 3탭 구조/돌 SVG/공유 카드/되돌아보기 등 기초 구축
+================================================================
+-->
+
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>고마운돌 v0.5</title>
+<title>고마운돌 v0.9</title>
 <style>
   :root{
     --bg:#FFFFFF;
@@ -61,6 +100,11 @@
   .compose h2{ font-size:22px; font-weight:800; letter-spacing:-.4px; margin:10px 0 4px; color:var(--ink); }
   .compose .desc{ font-size:14px; color:var(--text-dim); margin-bottom:22px; }
   .label{ font-size:13px; font-weight:700; color:var(--text-dim); margin:0 0 10px; }
+  .label-opt{ font-size:11px; font-weight:600; color:var(--text-faint); }
+  .fav-divider{ height:1px; background:var(--card-line); margin:26px 0 22px; }
+  .fav-genres{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .fav-genre{ padding:8px 14px; border-radius:14px; font-size:13px; font-weight:700; background:var(--card); color:var(--text-dim); border:1.5px solid var(--card-line); font-family:inherit; cursor:pointer; transition:all .12s ease; }
+  .fav-genre.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
   .today-q{ background:linear-gradient(135deg, #FBF6EF, #F5EEE4); border:1.5px solid #EBDCC9; border-radius:18px; padding:18px 20px; margin-bottom:24px; }
   .tq-label{ font-size:12px; font-weight:700; color:var(--warm); margin-bottom:6px; letter-spacing:.3px; }
   .tq-text{ font-size:19px; font-weight:800; color:var(--ink); line-height:1.4; letter-spacing:-.3px; }
@@ -135,9 +179,19 @@
   .fcard-date{ font-size:11px; color:var(--text-faint); font-weight:600; margin-top:2px; }
   .fcard-cat{ display:inline-block; font-size:11px; font-weight:700; color:var(--ink-soft); background:#EFEBE6; padding:2px 9px; border-radius:10px; margin-left:6px; }
   .fcard-report{ flex:0 0 auto; color:var(--text-faint); font-size:12px; font-weight:600; background:none; border:none; font-family:inherit; cursor:pointer; padding:4px 6px; }
-    .fcard-actions{ display:flex; gap:8px; }
+    .fcard-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .fav-divider-card{ height:1px; background:var(--card-line); margin:18px 0; }
+  .fav-block{ display:flex; align-items:center; gap:9px; margin:0; padding:12px 14px; background:#F7F3EC; border:1.5px solid #EBE2D4; border-radius:15px; }
+  .fav-tag{ flex:0 0 auto; font-size:11px; font-weight:800; color:#fff; background:var(--ink-soft); padding:3px 10px; border-radius:10px; }
+  .fav-name{ flex:1; min-width:0; font-size:15px; font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fav-empathy{ flex:0 0 auto; display:inline-flex; align-items:center; gap:5px; padding:7px 12px; border-radius:12px; border:1.5px solid #C9B99E; background:#fff; color:#9A7B4F; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; transition:all .12s ease; }
+  .fav-empathy:active{ transform:scale(.93); }
+  .fav-empathy.done{ background:rgba(154,123,79,.14); border-color:#B89968; color:#7E6234; }
+  .fav-empathy .spark{ width:14px; height:14px; }
+  .fav-empathy .spark path{ fill:none; stroke:currentColor; stroke-width:2; }
+  .fav-empathy.done .spark path{ fill:currentColor; stroke:currentColor; }
   .fcard-thank, .fcard-praise{ display:inline-flex; align-items:center; gap:6px; padding:9px 13px; border-radius:14px; border:1.5px solid var(--card-line); background:#fff; color:var(--ink-soft); font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; transition:all .12s ease; }
-  .fcard-thank:active, .fcard-praise:active{ transform:scale(.95); }
+  .fcard-thank:active, .fcard-praise:active:active{ transform:scale(.95); }
   .fcard-thank.done{ background:rgba(201,138,94,.12); border-color:var(--warm); color:#B0703F; }
   .fcard-praise.done{ background:rgba(90,140,180,.12); border-color:#7BA3C4; color:#4E7CA0; }
   .fcard-thank .heart, .fcard-praise .thumb{ width:15px; height:15px; flex:0 0 auto; }
@@ -371,6 +425,12 @@
     <p class="label">고마운 한 줄</p>
     <input class="wish-input" id="txt" maxlength="30" placeholder="예: 엄마가 말없이 반찬을 보내주셨다" />
     <div class="count" id="count">0 / 30</div>
+
+    <div class="fav-divider"></div>
+    <p class="label">요즘 빠진 것 <span class="label-opt">(선택)</span></p>
+    <div class="fav-genres" id="favGenres"></div>
+    <input class="wish-input" id="favTitle" maxlength="20" placeholder="제목을 적어보세요 (예: 김부장)" />
+    <div class="count" id="favCount">0 / 20</div>
   </div>
 
   <!-- ===== 돌탑 ===== -->
@@ -574,7 +634,7 @@ document.addEventListener('gesturechange', e=>e.preventDefault());
 document.addEventListener('touchmove', e=>{ if(e.touches.length>1) e.preventDefault(); }, {passive:false});
 (function(){ let lt=0; document.addEventListener('touchend', e=>{ const n=Date.now(); if(n-lt<=300) e.preventDefault(); lt=n; }, {passive:false}); })();
 
-/* 고마운돌 v0.5
+/* 고마운돌 v0.9
    - 개인 돌 기록: localStorage (thankstone_stones_v1) — 데이터 키는 유지(기존 돌 보존)
    - 소셜프루프(총 개수 / 오늘 N명): 토스 랭킹·카운트 API 실데이터로 교체.
        가짜 숫자 금지 — 실데이터 도착 전/실패 시엔 표시하지 않는다.
@@ -820,6 +880,25 @@ function setTodayQuestion(){
   const el=document.getElementById('tqText');
   if(el) el.textContent=todaysQuestion();
 }
+
+/* ===== 관심사(요즘 빠진 것) ===== */
+const FAV_GENRES=['드라마','영화','음악','책','웹툰','게임','음식','장소','기타'];
+let selectedGenre = null;
+function renderFavGenres(){
+  const wrap=document.getElementById('favGenres');
+  wrap.innerHTML=FAV_GENRES.map(g=>`<button class="fav-genre ${g===selectedGenre?'on':''}" data-genre="${g}">${g}</button>`).join('');
+}
+document.getElementById('favGenres').addEventListener('click', e=>{
+  const g=e.target.closest('.fav-genre'); if(!g) return;
+  const genre=g.dataset.genre;
+  selectedGenre = (selectedGenre===genre) ? null : genre;  // 다시 누르면 해제
+  document.querySelectorAll('.fav-genre').forEach(x=>x.classList.toggle('on', x.dataset.genre===selectedGenre));
+});
+document.getElementById('favTitle').addEventListener('input', e=>{
+  document.getElementById('favCount').textContent=e.target.value.length+' / 20';
+});
+function resetFav(){ selectedGenre=null; const t=document.getElementById('favTitle'); if(t) t.value=''; const c=document.getElementById('favCount'); if(c) c.textContent='0 / 20'; renderFavGenres(); }
+
 let stage='intro';
 // 인트로 전용 버튼 (콘텐츠와 한 덩어리, 화면 중앙)
 document.getElementById('introCta').addEventListener('click', goCompose);
@@ -832,6 +911,7 @@ function goCompose(){
   document.getElementById('fab').classList.add('hide');
   tabbar.classList.add('hide');
   setTodayQuestion();
+  resetFav();
 }
 // 돌탑/되돌아보기에서 새 고마움 새기기
 document.getElementById('fab').addEventListener('click', goCompose);
@@ -857,9 +937,13 @@ function submit(){
   // 운영 모니터링 전환 지표 + 카운트 증가(실데이터)
   logEvent('thanks_carved');
   postToApp({type:'INCR_THANKS_COUNT'});
+  // 관심사(요즘 빠진 것) — 장르 선택 + 제목 있을 때만
+  const favTitle=(document.getElementById('favTitle').value||'').trim();
+  const fav = (selectedGenre && favTitle) ? { genre:selectedGenre, title:favTitle } : null;
   // 고마움 밭에 익명 공유 — Firebase RTDB에 저장 (San 검증 방식)
-  fbAdd({ id:myId, nick:nickForServer(), cat:selectedCat, text:t, shape:shapeIdx, ts:stone.ts, thanks:0, reports:0 })
-    .then(fbKey=>{ if(fbKey){ stone.fbKey=fbKey; save(); } });
+  const entry = { id:myId, nick:nickForServer(), cat:selectedCat, text:t, shape:shapeIdx, ts:stone.ts, thanks:0, reports:0 };
+  if(fav){ entry.favGenre=fav.genre; entry.favTitle=fav.title; entry.empathies=0; }
+  fbAdd(entry).then(fbKey=>{ if(fbKey){ stone.fbKey=fbKey; save(); } });
   carve(t);
 }
 
@@ -1322,14 +1406,17 @@ let feedItems = null;      // 화면에 보이는 랜덤 10개
 let feedPool = null;       // 서버에서 받은 전체 풀
 let feedThanked = {};      // 내가 함께 고마워한 항목 id (localStorage)
 let feedPraised = {};      // 내가 칭찬한 항목 id
+let feedEmpathized = {};   // 내가 공감한 항목 id
 let feedReported = {};     // 내가 신고한 항목
 try{ feedThanked = JSON.parse(localStorage.getItem('thankstone_feed_thanked_v1'))||{}; }catch(e){}
 try{ feedPraised = JSON.parse(localStorage.getItem('thankstone_feed_praised_v1'))||{}; }catch(e){}
+try{ feedEmpathized = JSON.parse(localStorage.getItem('thankstone_feed_empathized_v1'))||{}; }catch(e){}
 try{ feedReported = JSON.parse(localStorage.getItem('thankstone_feed_reported_v1'))||{}; }catch(e){}
 function saveFeedLocal(){
   try{
     localStorage.setItem('thankstone_feed_thanked_v1', JSON.stringify(feedThanked));
     localStorage.setItem('thankstone_feed_praised_v1', JSON.stringify(feedPraised));
+    localStorage.setItem('thankstone_feed_empathized_v1', JSON.stringify(feedEmpathized));
     localStorage.setItem('thankstone_feed_reported_v1', JSON.stringify(feedReported));
   }catch(e){}
 }
@@ -1412,8 +1499,10 @@ function renderFeed(){
   const html = feedItems.map(it=>{
     const thanked = !!feedThanked[it.id];
     const praised = !!feedPraised[it.id];
+    const empathized = !!feedEmpathized[it.id];
     const shownThanks = (it.thanks||0);
     const shownPraise = (it.praises||0);
+    const shownEmpathy = (it.empathies||0);
     return `
     <div class="fcard" data-id="${it.id}">
       <div class="fcard-top">
@@ -1433,6 +1522,15 @@ function renderFeed(){
           <svg class="thumb" viewBox="0 0 24 24"><path d="M7 10v10M7 10l4-7c.6 0 1.5.4 1.5 1.8 0 1-.5 2.7-.8 3.7h5.1c1 0 1.7.9 1.5 1.9l-1.3 6c-.2.9-1 1.6-1.9 1.6H7" stroke-linejoin="round" stroke-linecap="round"/></svg>${praised?'칭찬했어요':'칭찬해요'} <b>${shownPraise}</b>
         </button>
       </div>
+      ${(it.favGenre && it.favTitle) ? `
+      <div class="fav-divider-card"></div>
+      <div class="fav-block">
+        <span class="fav-tag">${escapeHTML(it.favGenre)}</span>
+        <span class="fav-name">${escapeHTML(it.favTitle)}</span>
+        <button class="fav-empathy ${empathized?'done':''}" data-empathy="${it.id}">
+          <svg class="spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.5L19.5 10l-4.8 3.2L16 19l-4-3.4L8 19l1.3-5.8L4.5 10l5.6-1.5z" stroke-linejoin="round"/></svg><b>${shownEmpathy}</b>
+        </button>
+      </div>` : ''}
     </div>`;
   }).join('');
   const more = (feedShown < currentSorted.length)
@@ -1457,6 +1555,7 @@ document.getElementById('fieldSorts').addEventListener('click', e=>{
 document.getElementById('fieldList').addEventListener('click', e=>{
   const th=e.target.closest('[data-thank]');
   const pr=e.target.closest('[data-praise]');
+  const em=e.target.closest('[data-empathy]');
   const rp=e.target.closest('[data-report]');
   if(th){
     const id=th.dataset.thank;
@@ -1476,6 +1575,15 @@ document.getElementById('fieldList').addEventListener('click', e=>{
     logEvent('feed_praise');
     renderFeed();
     toast('칭찬했어요');
+  } else if(em){
+    const id=em.dataset.empathy;
+    if(feedEmpathized[id]) return;              // 중복 방지
+    feedEmpathized[id]=1; saveFeedLocal();
+    const it=(feedPool||feedItems).find(x=>x.id===id);
+    if(it){ it.empathies=(it.empathies||0)+1; if(it._fbKey) fbPatch(it._fbKey, {empathies:it.empathies}); }
+    logEvent('feed_empathy');
+    renderFeed();
+    toast('공감했어요');
   } else if(rp){
     const id=rp.dataset.report;
     feedReported[id]=1; saveFeedLocal();
