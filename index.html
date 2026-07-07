@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>고마운돌 v0.4</title>
+<title>고마운돌 v0.5</title>
 <style>
   :root{
     --bg:#FFFFFF;
@@ -61,6 +61,9 @@
   .compose h2{ font-size:22px; font-weight:800; letter-spacing:-.4px; margin:10px 0 4px; color:var(--ink); }
   .compose .desc{ font-size:14px; color:var(--text-dim); margin-bottom:22px; }
   .label{ font-size:13px; font-weight:700; color:var(--text-dim); margin:0 0 10px; }
+  .today-q{ background:linear-gradient(135deg, #FBF6EF, #F5EEE4); border:1.5px solid #EBDCC9; border-radius:18px; padding:18px 20px; margin-bottom:24px; }
+  .tq-label{ font-size:12px; font-weight:700; color:var(--warm); margin-bottom:6px; letter-spacing:.3px; }
+  .tq-text{ font-size:19px; font-weight:800; color:var(--ink); line-height:1.4; letter-spacing:-.3px; }
   .chips{ display:flex; flex-wrap:wrap; gap:9px; margin-bottom:24px; }
   .chip{
     padding:9px 15px; border-radius:20px; font-size:14px; font-weight:600;
@@ -120,19 +123,19 @@
   .field-sorts{ display:flex; gap:8px; margin-top:12px; }
   .sort-chip{ padding:7px 16px; border-radius:16px; font-size:13.5px; font-weight:700; background:var(--card); color:var(--text-dim); border:1.5px solid var(--card-line); font-family:inherit; cursor:pointer; transition:all .12s ease; }
   .sort-chip.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
-  .field-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 18px 90px; }
+  .field-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:8px 18px 90px; scroll-snap-type:y mandatory; }
   .field-scroll::-webkit-scrollbar{ display:none; }
   .field-loading, .field-empty{ text-align:center; color:var(--text-faint); font-size:14px; padding:50px 20px; font-weight:500; line-height:1.6; }
-  .fcard{ background:var(--card); border:1.5px solid var(--card-line); border-radius:18px; padding:16px 18px; margin-bottom:12px; }
-  .fcard-top{ display:flex; align-items:center; gap:9px; margin-bottom:10px; }
+  .fcard{ background:var(--card); border:1.5px solid var(--card-line); border-radius:22px; padding:26px 22px; margin-bottom:14px; scroll-snap-align:start; min-height:62vh; display:flex; flex-direction:column; justify-content:center; box-sizing:border-box; }
+  .fcard-top{ display:flex; align-items:center; gap:11px; margin-bottom:20px; }
   .fcard-stone{ flex:0 0 auto; }
+  .fcard-text{ font-size:22px; font-weight:700; color:var(--ink); line-height:1.5; letter-spacing:-.3px; margin-bottom:26px; }
   .fcard-meta{ flex:1; min-width:0; }
   .fcard-who{ font-size:12px; font-weight:700; color:var(--text-dim); }
   .fcard-date{ font-size:11px; color:var(--text-faint); font-weight:600; margin-top:2px; }
   .fcard-cat{ display:inline-block; font-size:11px; font-weight:700; color:var(--ink-soft); background:#EFEBE6; padding:2px 9px; border-radius:10px; margin-left:6px; }
   .fcard-report{ flex:0 0 auto; color:var(--text-faint); font-size:12px; font-weight:600; background:none; border:none; font-family:inherit; cursor:pointer; padding:4px 6px; }
-  .fcard-text{ font-size:16px; font-weight:600; color:var(--ink); line-height:1.5; letter-spacing:-.2px; margin-bottom:14px; }
-  .fcard-actions{ display:flex; gap:8px; }
+    .fcard-actions{ display:flex; gap:8px; }
   .fcard-thank, .fcard-praise{ display:inline-flex; align-items:center; gap:6px; padding:9px 13px; border-radius:14px; border:1.5px solid var(--card-line); background:#fff; color:var(--ink-soft); font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; transition:all .12s ease; }
   .fcard-thank:active, .fcard-praise:active{ transform:scale(.95); }
   .fcard-thank.done{ background:rgba(201,138,94,.12); border-color:var(--warm); color:#B0703F; }
@@ -352,8 +355,10 @@
 
   <!-- ===== 입력 ===== -->
   <div class="screen compose hide" id="s-compose">
-    <h2>어떤 게 고마웠나요?</h2>
-    <p class="desc">받은 고마움을 한 줄로 새겨보세요.</p>
+    <div class="today-q" id="todayQ">
+      <div class="tq-label">오늘의 질문</div>
+      <div class="tq-text" id="tqText">오늘 어떤 게 고마웠나요?</div>
+    </div>
     <p class="label">누구에게</p>
     <div class="chips" id="chips">
       <div class="chip" data-cat="가족">가족</div>
@@ -569,7 +574,7 @@ document.addEventListener('gesturechange', e=>e.preventDefault());
 document.addEventListener('touchmove', e=>{ if(e.touches.length>1) e.preventDefault(); }, {passive:false});
 (function(){ let lt=0; document.addEventListener('touchend', e=>{ const n=Date.now(); if(n-lt<=300) e.preventDefault(); lt=n; }, {passive:false}); })();
 
-/* 고마운돌 v0.2
+/* 고마운돌 v0.5
    - 개인 돌 기록: localStorage (thankstone_stones_v1) — 데이터 키는 유지(기존 돌 보존)
    - 소셜프루프(총 개수 / 오늘 N명): 토스 랭킹·카운트 API 실데이터로 교체.
        가짜 숫자 금지 — 실데이터 도착 전/실패 시엔 표시하지 않는다.
@@ -788,7 +793,33 @@ function stoneSVG(i, w=130){
   </svg>`;
 }
 
-/* ===== 인트로 → 입력 → 돌탑 ===== */
+/* ===== 오늘의 질문 (매일 순환, 프롬프트 다양성) ===== */
+const TODAY_QUESTIONS=[
+  '오늘 어떤 게 고마웠나요?',
+  '누가 오늘을 조금 쉽게 만들어줬나요?',
+  '오늘 나를 웃게 한 건 무엇이었나요?',
+  '최근에 받은 작은 친절이 있나요?',
+  '오늘 하루, 무사히 지나간 것에 감사한 순간은?',
+  '말없이 챙겨준 사람이 있었나요?',
+  '오늘 스스로에게 고마운 점이 있다면?',
+  '문득 마음이 따뜻해진 순간이 있었나요?',
+  '누군가의 한마디가 힘이 된 적 있나요?',
+  '오늘 당연하게 지나쳤지만 고마운 것은?',
+  '가족에게 고마웠던 순간이 있나요?',
+  '친구가 해준 일 중 고마운 게 있나요?',
+  '낯선 사람에게 받은 배려가 있었나요?',
+  '오늘 날씨나 풍경에 감사한 적 있나요?',
+  '지친 하루를 버티게 해준 건 무엇이었나요?',
+];
+function todaysQuestion(){
+  // 날짜(일 단위) 기반 → 모두가 같은 날 같은 질문(공동체감), 매일 순환
+  const day=Math.floor(Date.now()/86400000);
+  return TODAY_QUESTIONS[day % TODAY_QUESTIONS.length];
+}
+function setTodayQuestion(){
+  const el=document.getElementById('tqText');
+  if(el) el.textContent=todaysQuestion();
+}
 let stage='intro';
 // 인트로 전용 버튼 (콘텐츠와 한 덩어리, 화면 중앙)
 document.getElementById('introCta').addEventListener('click', goCompose);
@@ -800,6 +831,7 @@ function goCompose(){
   ctaWrap.classList.remove('hide');
   document.getElementById('fab').classList.add('hide');
   tabbar.classList.add('hide');
+  setTodayQuestion();
 }
 // 돌탑/되돌아보기에서 새 고마움 새기기
 document.getElementById('fab').addEventListener('click', goCompose);
@@ -1385,7 +1417,7 @@ function renderFeed(){
     return `
     <div class="fcard" data-id="${it.id}">
       <div class="fcard-top">
-        <span class="fcard-stone">${stoneSVG(it.shape!=null?it.shape:0, 52)}</span>
+        <span class="fcard-stone">${stoneSVG(it.shape!=null?it.shape:0, 64)}</span>
         <div class="fcard-meta">
           <span class="fcard-who">${escapeHTML(it.nick||'고마운 돌')}</span><span class="fcard-cat">${escapeHTML(it.cat||'일상')}</span>
           <div class="fcard-date">${it.ts?feedDateLabel(it.ts):''}</div>
