@@ -1,260 +1,1509 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>talkall 알림</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>고마운돌 v0.4</title>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  :root{ --coral:#FF6B4A; --bg:#14161C; --card:#1E212B; --line:#2A2E3A; --ink:#F2F4F8; --dim:#8A90A0; --green:#34C759; --red:#FF453A; }
-  body{ font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Pretendard',sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; letter-spacing:-.3px; overscroll-behavior:none; }
-  .wrap{ max-width:440px; margin:0 auto; padding:20px 18px 40px; min-height:100vh; display:flex; flex-direction:column; }
-  .top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
-  .brand{ display:flex; align-items:center; gap:9px; font-size:17px; font-weight:800; }
-  .brand .dot{ width:9px; height:9px; border-radius:50%; background:var(--red); box-shadow:0 0 8px var(--red); transition:.3s; }
-  .brand .dot.live{ background:var(--green); box-shadow:0 0 8px var(--green); animation:blink 1.4s infinite; }
-  @keyframes blink{ 50%{ opacity:.35 } }
-  .gear{ background:none; border:none; color:var(--dim); font-size:22px; cursor:pointer; padding:4px; }
+  :root{
+    --bg:#FFFFFF;
+    --ink:#3A2E28;          /* 다크브라운 (소원돌 톤) */
+    --ink-soft:#6B5D54;
+    --text:#2C2622;
+    --text-dim:#9C9298;
+    --text-faint:#BDB5B0;
+    --stone-dark:#3A2E28;
+    --stone-mid:#8A8F96;
+    --stone-light:#E4E0DA;
+    --card:#F7F5F2;
+    --card-line:#ECE8E3;
+    --warm:#C98A5E;         /* 살짝 따뜻한 포인트(고마움) - 아주 절제 */
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; height:100%; touch-action:pan-y; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+  *{ -webkit-user-select:none; user-select:none; }
+  input, textarea{ -webkit-user-select:text; user-select:text; }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+    background:var(--bg); color:var(--text);
+    overflow:hidden; line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .app{ position:fixed; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; background:var(--bg); }
 
-  .hero{ background:var(--card); border:1px solid var(--line); border-radius:22px; padding:30px 22px; text-align:center; margin-bottom:14px; position:relative; overflow:hidden; }
-  .hero.flash{ animation:flash .9s; }
-  @keyframes flash{ 0%{ background:var(--coral); } 100%{ background:var(--card); } }
-  .hero .lb{ font-size:13px; font-weight:700; color:var(--dim); margin-bottom:8px; letter-spacing:.5px; }
-  .hero .num{ font-size:66px; font-weight:900; line-height:1; letter-spacing:-2px; color:var(--coral); font-variant-numeric:tabular-nums; }
-  .hero .num.pop{ animation:pop .5s; }
-  @keyframes pop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.14); } 100%{ transform:scale(1); } }
-  .hero .sub{ font-size:13px; color:var(--dim); font-weight:600; margin-top:12px; }
-  .hero .gain{ display:inline-block; margin-top:12px; background:rgba(255,107,74,.14); color:var(--coral); font-size:14px; font-weight:800; padding:5px 14px; border-radius:999px; min-height:0; }
+  /* 헤더 */
+  .topbar{ display:flex; align-items:center; gap:8px; padding:14px 16px 6px; flex:0 0 auto; }
+  .topbar .back{ font-size:22px; color:var(--ink); }
+  .topbar .mini{ width:22px; height:26px; }
+  .topbar .name{ font-size:16px; font-weight:700; letter-spacing:-.3px; color:var(--ink); }
+  .topbar .spacer{ flex:1; }
+  .topbar .sys{ color:var(--text-faint); font-size:19px; font-weight:600; margin-left:12px; }
 
-  .row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
-  .stat{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 15px; }
-  .stat .k{ font-size:12px; color:var(--dim); font-weight:700; margin-bottom:5px; }
-  .stat .v{ font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; }
-  .stat .v.sm{ font-size:14px; font-weight:700; }
+  .screen{ flex:1; display:flex; flex-direction:column; min-height:0; }
+  .hide{ display:none !important; }
 
-  .ctrls{ display:flex; gap:10px; margin-bottom:14px; }
-  .btn{ flex:1; padding:15px; border:none; border-radius:14px; font-size:15px; font-weight:800; font-family:inherit; cursor:pointer; }
-  .btn.go{ background:var(--coral); color:#fff; }
-  .btn.go.stop{ background:#3A3E4A; color:var(--ink); }
-  .btn.ghost{ background:var(--card); border:1px solid var(--line); color:var(--ink); flex:0 0 auto; padding:15px 16px; }
-  .btn.ghost.off{ color:var(--dim); }
+  /* ===== 인트로 ===== */
+  .intro{ align-items:center; justify-content:center; text-align:center; padding:0 30px; overflow:hidden; }
+  .intro .stack{ margin-bottom:34px; }
+  .intro h1{ margin-bottom:18px; }
+  .intro .proof{ margin-bottom:0; }
+  .intro-cta{
+    margin-top:36px; width:100%; max-width:340px; border:none; border-radius:18px;
+    padding:17px 20px; font-size:17px; font-weight:800; letter-spacing:-.3px; color:#fff;
+    background:var(--ink); cursor:pointer; transition:transform .08s ease; font-family:inherit;
+  }
+  .intro-cta:active{ transform:scale(.975); }
+  .intro h1{ font-size:27px; font-weight:800; letter-spacing:-.6px; line-height:1.4; color:var(--ink); margin:0 0 14px; }
+  .intro .proof{ font-size:14.5px; color:var(--text-dim); font-weight:500; }
+  .intro .proof b{ color:var(--ink-soft); font-weight:700; }
 
-  .seg{ display:flex; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-bottom:14px; }
-  .seg button{ flex:1; padding:12px 0; background:none; border:none; color:var(--dim); font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
-  .seg button.on{ background:var(--coral); color:#fff; }
+  /* ===== 입력 ===== */
+  .compose{ padding:6px 22px 0; }
+  .compose h2{ font-size:22px; font-weight:800; letter-spacing:-.4px; margin:10px 0 4px; color:var(--ink); }
+  .compose .desc{ font-size:14px; color:var(--text-dim); margin-bottom:22px; }
+  .label{ font-size:13px; font-weight:700; color:var(--text-dim); margin:0 0 10px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:9px; margin-bottom:24px; }
+  .chip{
+    padding:9px 15px; border-radius:20px; font-size:14px; font-weight:600;
+    background:var(--card); color:var(--ink-soft); border:1.5px solid var(--card-line); cursor:pointer;
+    transition:all .12s ease;
+  }
+  .chip.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .wish-input{
+    width:100%; background:var(--card); border:1.5px solid var(--card-line); border-radius:16px;
+    padding:16px; color:var(--text); font-size:16px; font-weight:600; font-family:inherit; outline:none;
+    transition:border-color .12s ease;
+  }
+  .wish-input::placeholder{ color:var(--text-faint); font-weight:500; }
+  .wish-input:focus{ border-color:var(--ink); }
+  .count{ text-align:right; font-size:12px; color:var(--text-faint); margin:8px 2px 0; }
 
-  .log-h{ font-size:13px; font-weight:700; color:var(--dim); margin:6px 4px 8px; }
-  .log{ background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; flex:1; min-height:120px; }
-  .li{ display:flex; align-items:center; justify-content:space-between; padding:12px 15px; font-size:14px; }
-  .li + .li{ border-top:1px solid var(--line); }
-  .li .lt{ color:var(--dim); font-weight:600; font-size:13px; }
-  .li .ld{ font-weight:800; color:var(--coral); }
-  .li .lc{ color:var(--dim); font-size:13px; font-weight:600; }
-  .empty{ padding:26px 15px; text-align:center; color:var(--dim); font-size:13px; }
+  /* ===== 돌탑(메인) ===== */
+  .tower-head{ padding:8px 22px 4px; flex:0 0 auto; }
+  .tower-head h2{ font-size:21px; font-weight:800; letter-spacing:-.4px; color:var(--ink); margin:0; }
+  .tower-head .sub{ font-size:13.5px; color:var(--text-dim); margin-top:3px; font-weight:500; }
+  .tower-head .sub b{ color:var(--ink-soft); font-weight:700; }
 
-  .err{ background:rgba(255,69,58,.12); border:1px solid rgba(255,69,58,.4); color:#FF9A92; border-radius:12px; padding:12px 14px; font-size:12.5px; font-weight:600; line-height:1.5; margin-bottom:14px; display:none; }
-  .err.show{ display:block; }
-  .err code{ background:rgba(0,0,0,.3); padding:1px 6px; border-radius:5px; font-size:11.5px; }
+  .tower-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 22px 20px; }
+  .tower-scroll::-webkit-scrollbar{ display:none; }
+  .tower{ display:flex; flex-direction:column-reverse; align-items:center; gap:-6px; }
 
-  .sheet{ position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:50; display:none; align-items:flex-end; justify-content:center; }
-  .sheet.show{ display:flex; }
-  .sheet-in{ background:var(--card); width:100%; max-width:440px; border-radius:22px 22px 0 0; padding:22px 18px calc(22px + env(safe-area-inset-bottom)); }
-  .sheet-in h3{ font-size:17px; font-weight:800; margin-bottom:14px; }
-  .fld{ margin-bottom:14px; }
-  .fld label{ display:block; font-size:12px; color:var(--dim); font-weight:700; margin-bottom:6px; }
-  .fld input{ width:100%; background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:12px; color:var(--ink); font-size:13px; font-family:inherit; }
-  .sheet-in .btn.go{ width:100%; margin-top:4px; }
-  .foot{ text-align:center; font-size:11px; color:#4A5060; margin-top:16px; font-weight:600; }
+  .stone-item{ width:100%; max-width:300px; display:flex; flex-direction:column; align-items:center; margin-top:-8px; cursor:pointer; }
+  .stone-item .caption{
+    font-size:12.5px; color:var(--text-dim); text-align:center; margin-top:2px; margin-bottom:6px;
+    max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:0; transition:opacity .2s;
+  }
+  .stone-item.show-cap .caption{ opacity:1; }
+  .empty-tower{ text-align:center; color:var(--text-faint); font-size:14px; padding:40px 0; font-weight:500; }
+
+  /* ===== 되돌아보기 ===== */
+  .review{ padding:8px 22px 0; }
+  .review h2{ font-size:21px; font-weight:800; color:var(--ink); margin:8px 0 18px; }
+  .review-card{
+    background:var(--card); border:1.5px solid var(--card-line); border-radius:20px;
+    padding:26px 22px; text-align:center; margin-bottom:16px;
+  }
+  .review-card .when{ font-size:13px; color:var(--warm); font-weight:700; margin-bottom:14px; }
+  .review-card .stone-mini{ margin-bottom:14px; }
+  .review-card .txt{ font-size:19px; font-weight:700; color:var(--ink); letter-spacing:-.3px; line-height:1.5; }
+  .review-card .cat{ display:inline-block; margin-top:12px; font-size:12px; font-weight:700; color:var(--text-dim); background:#EFEBE6; padding:3px 12px; border-radius:12px; }
+  .review-card .rdate{ font-size:12.5px; color:var(--text-faint); margin-top:14px; font-weight:600; letter-spacing:.3px; }
+  .review-again{ width:100%; padding:15px; border-radius:16px; border:1.5px solid var(--card-line); background:#fff; color:var(--ink-soft); font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .review-empty{ text-align:center; color:var(--text-faint); font-size:14px; padding:50px 20px; font-weight:500; line-height:1.6; }
+
+  /* ===== 하단 탭 ===== */
+  /* ===== 고마움 밭 피드 ===== */
+  .field{ padding:0; }
+  .field-head{ padding:8px 22px 6px; flex:0 0 auto; }
+  .field-head h2{ font-size:21px; font-weight:800; letter-spacing:-.4px; color:var(--ink); margin:0; }
+  .field-sub{ font-size:13.5px; color:var(--text-dim); margin-top:3px; font-weight:500; }
+  .field-sub b{ color:var(--ink-soft); font-weight:700; }
+  .field-sorts{ display:flex; gap:8px; margin-top:12px; }
+  .sort-chip{ padding:7px 16px; border-radius:16px; font-size:13.5px; font-weight:700; background:var(--card); color:var(--text-dim); border:1.5px solid var(--card-line); font-family:inherit; cursor:pointer; transition:all .12s ease; }
+  .sort-chip.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .field-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 18px 90px; }
+  .field-scroll::-webkit-scrollbar{ display:none; }
+  .field-loading, .field-empty{ text-align:center; color:var(--text-faint); font-size:14px; padding:50px 20px; font-weight:500; line-height:1.6; }
+  .fcard{ background:var(--card); border:1.5px solid var(--card-line); border-radius:18px; padding:16px 18px; margin-bottom:12px; }
+  .fcard-top{ display:flex; align-items:center; gap:9px; margin-bottom:10px; }
+  .fcard-stone{ flex:0 0 auto; }
+  .fcard-meta{ flex:1; min-width:0; }
+  .fcard-who{ font-size:12px; font-weight:700; color:var(--text-dim); }
+  .fcard-date{ font-size:11px; color:var(--text-faint); font-weight:600; margin-top:2px; }
+  .fcard-cat{ display:inline-block; font-size:11px; font-weight:700; color:var(--ink-soft); background:#EFEBE6; padding:2px 9px; border-radius:10px; margin-left:6px; }
+  .fcard-report{ flex:0 0 auto; color:var(--text-faint); font-size:12px; font-weight:600; background:none; border:none; font-family:inherit; cursor:pointer; padding:4px 6px; }
+  .fcard-text{ font-size:16px; font-weight:600; color:var(--ink); line-height:1.5; letter-spacing:-.2px; margin-bottom:14px; }
+  .fcard-actions{ display:flex; gap:8px; }
+  .fcard-thank, .fcard-praise{ display:inline-flex; align-items:center; gap:6px; padding:9px 13px; border-radius:14px; border:1.5px solid var(--card-line); background:#fff; color:var(--ink-soft); font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; transition:all .12s ease; }
+  .fcard-thank:active, .fcard-praise:active{ transform:scale(.95); }
+  .fcard-thank.done{ background:rgba(201,138,94,.12); border-color:var(--warm); color:#B0703F; }
+  .fcard-praise.done{ background:rgba(90,140,180,.12); border-color:#7BA3C4; color:#4E7CA0; }
+  .fcard-thank .heart, .fcard-praise .thumb{ width:15px; height:15px; flex:0 0 auto; }
+  .fcard-thank .heart path{ fill:none; stroke:currentColor; stroke-width:2; }
+  .fcard-thank.done .heart path{ fill:currentColor; stroke:currentColor; }
+  .fcard-praise .thumb path{ fill:none; stroke:currentColor; stroke-width:2; }
+  .fcard-praise.done .thumb path{ fill:currentColor; stroke:currentColor; }
+  .feed-more{ width:100%; padding:14px; margin-top:4px; border-radius:16px; border:1.5px solid var(--card-line); background:#fff; color:var(--ink-soft); font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .feed-more:active{ transform:scale(.98); }
+  /* A: 회상 배너 */
+  .recall-banner{ position:absolute; left:14px; right:14px; top:10px; z-index:30;
+    display:flex; align-items:center; gap:11px; padding:13px 14px; border-radius:16px;
+    background:#FBF6EF; border:1.5px solid #EBD9C6; box-shadow:0 6px 18px rgba(58,46,40,.1); cursor:pointer;
+    animation:recallIn .4s cubic-bezier(.2,.8,.2,1); }
+  @keyframes recallIn{ from{opacity:0; transform:translateY(-12px)} to{opacity:1; transform:translateY(0)} }
+  .recall-ico{ flex:0 0 auto; width:34px; height:34px; }
+  .recall-ico svg{ width:34px; height:34px; }
+  .recall-body{ flex:1; min-width:0; }
+  .recall-when{ font-size:12px; font-weight:700; color:#B0703F; }
+  .recall-text{ font-size:14.5px; font-weight:700; color:var(--ink); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .recall-close{ flex:0 0 auto; background:none; border:none; color:var(--text-faint); font-size:15px; cursor:pointer; padding:4px; font-family:inherit; }
+
+  /* 나의 페이지 시트 */
+  .my-sheet{ text-align:center; max-height:88vh; overflow-y:auto; }
+  .my-sheet::-webkit-scrollbar{ display:none; }
+  .my-stone{ width:96px; height:80px; margin:6px auto 10px; }
+  .my-name{ font-size:20px; font-weight:800; color:var(--ink); letter-spacing:-.3px; }
+  .my-since{ font-size:13px; color:var(--text-dim); font-weight:600; margin-top:4px; }
+  .my-stats{ display:flex; gap:10px; margin:20px 0 8px; }
+  .my-stat{ flex:1; background:var(--card); border:1.5px solid var(--card-line); border-radius:16px; padding:14px 8px; display:flex; flex-direction:column; gap:4px; }
+  .my-stat b{ font-size:18px; font-weight:800; color:var(--ink); }
+  .my-stat span{ font-size:11.5px; color:var(--text-dim); font-weight:600; }
+  .my-section{ text-align:left; margin-top:22px; }
+  .my-label{ font-size:13px; font-weight:700; color:var(--text-dim); margin-bottom:10px; }
+  .my-nick-row{ display:flex; gap:8px; }
+  .my-nick-input{ flex:1; background:var(--card); border:1.5px solid var(--card-line); border-radius:14px; padding:14px; color:var(--text); font-size:15px; font-weight:600; font-family:inherit; outline:none; }
+  .my-nick-input:focus{ border-color:var(--ink); }
+  .my-nick-save{ flex:0 0 auto; padding:0 20px; border:none; border-radius:14px; background:var(--ink); color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .my-nick-hint{ font-size:12px; color:var(--text-faint); margin-top:8px; font-weight:500; }
+  .my-stone-picker{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+  .my-pick{ aspect-ratio:1; border-radius:14px; border:2px solid transparent; background:var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:4px; }
+  .my-pick.on{ border-color:var(--ink); background:rgba(201,138,94,.1); }
+
+  /* 돌탑 상단 고정 프로필 */
+  .tower-profile{ flex:0 0 auto; padding:12px 20px 14px; border-bottom:1px solid var(--card-line); }
+  .tp-head{ display:flex; align-items:center; gap:11px; margin-bottom:14px; }
+  .tp-stone{ flex:0 0 auto; width:48px; height:48px; }
+  .tp-info{ flex:1; min-width:0; }
+  .tp-name{ font-size:17px; font-weight:800; color:var(--ink); letter-spacing:-.3px; }
+  .tp-bio{ font-size:13px; color:var(--ink-soft); font-weight:600; margin-top:2px; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tp-bio.empty{ color:var(--text-faint); font-weight:500; }
+  .tp-since{ font-size:12px; color:var(--text-dim); font-weight:600; margin-top:2px; }
+  .tp-stats{ display:flex; gap:8px; margin-bottom:12px; }
+  .tp-stat{ flex:1; background:var(--card); border:1.5px solid var(--card-line); border-radius:14px; padding:11px 6px; display:flex; flex-direction:column; gap:3px; align-items:center; }
+  .tp-stat b{ font-size:17px; font-weight:800; color:var(--ink); }
+  .tp-stat span{ font-size:11px; color:var(--text-dim); font-weight:600; }
+  .tp-nick-row{ display:flex; gap:7px; margin-bottom:10px; }
+  .tp-nick-input{ flex:1; min-width:0; background:var(--card); border:1.5px solid var(--card-line); border-radius:13px; padding:12px 13px; color:var(--text); font-size:14.5px; font-weight:600; font-family:inherit; outline:none; }
+  .tp-nick-input:focus{ border-color:var(--ink); }
+  .tp-dice{ flex:0 0 auto; width:46px; border:1.5px solid var(--card-line); border-radius:13px; background:#fff; font-size:18px; cursor:pointer; }
+  .tp-save{ flex:0 0 auto; padding:0 18px; border:none; border-radius:13px; background:var(--ink); color:#fff; font-size:14.5px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .tp-bio-row{ margin-bottom:12px; }
+  .tp-bio-input{ width:100%; background:var(--card); border:1.5px solid var(--card-line); border-radius:13px; padding:11px 13px; color:var(--text); font-size:14px; font-weight:600; font-family:inherit; outline:none; box-sizing:border-box; }
+  .tp-bio-input:focus{ border-color:var(--ink); }
+  .tp-colors{ display:flex; gap:9px; overflow-x:auto; padding-bottom:2px; -webkit-overflow-scrolling:touch; }
+  .tp-colors::-webkit-scrollbar{ display:none; }
+  .tp-color{ flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:2.5px solid transparent; cursor:pointer; }
+  .tp-color.on{ border-color:var(--ink); }
+
+  /* 프로필 바 (홈 상단 고정) */
+  .profile-bar{ flex:0 0 auto; display:flex; align-items:center; gap:11px; padding:14px 20px 12px; background:var(--bg); border-bottom:1px solid var(--card-line); z-index:15; }  .pb-stone{ flex:0 0 auto; width:42px; height:42px; }
+  .pb-info{ flex:1; min-width:0; }
+  .pb-name{ font-size:15px; font-weight:800; color:var(--ink); letter-spacing:-.3px; }
+  .pb-days{ font-size:12px; color:var(--text-dim); margin-top:1px; font-weight:600; }
+  .pb-settings{ flex:0 0 auto; width:36px; height:36px; border:none; background:none; color:var(--text-dim); cursor:pointer; padding:6px; }
+  .pb-settings svg{ width:24px; height:24px; }
+  /* 나의 페이지 시트 */
+  .profile-sheet{ text-align:left; }
+  .ps-head{ text-align:center; margin-bottom:18px; }
+  .ps-stone{ width:70px; height:70px; margin:0 auto 8px; }
+  .ps-title{ font-size:19px; font-weight:800; color:var(--ink); }
+  .ps-since{ font-size:12.5px; color:var(--text-faint); margin-top:3px; font-weight:600; }
+  .ps-stats{ display:flex; gap:10px; margin-bottom:22px; }
+  .ps-stat{ flex:1; text-align:center; background:var(--card); border:1.5px solid var(--card-line); border-radius:14px; padding:12px 6px; }
+  .ps-stat b{ display:block; font-size:20px; font-weight:800; color:var(--ink); }
+  .ps-stat span{ font-size:11.5px; color:var(--text-dim); font-weight:600; }
+  .ps-field{ margin-bottom:18px; }
+  .ps-label{ display:block; font-size:13px; font-weight:700; color:var(--text-dim); margin-bottom:9px; }
+  .ps-nick-row{ display:flex; gap:8px; }
+  .ps-input{ flex:1; background:var(--card); border:1.5px solid var(--card-line); border-radius:14px; padding:13px 14px; font-size:15px; font-weight:600; font-family:inherit; color:var(--text); outline:none; }
+  .ps-input:focus{ border-color:var(--ink); }
+  .ps-dice{ flex:0 0 auto; width:48px; border:1.5px solid var(--card-line); background:#fff; border-radius:14px; font-size:20px; cursor:pointer; }
+  .ps-hint{ font-size:11.5px; color:var(--text-faint); margin-top:7px; }
+  .ps-colors{ display:flex; flex-wrap:wrap; gap:9px; }
+  .ps-color{ width:34px; height:34px; border-radius:50%; cursor:pointer; border:2.5px solid transparent; transition:border-color .12s; }
+  .ps-color.on{ border-color:var(--ink); }
+  .ps-save{ width:100%; padding:15px; border:none; border-radius:16px; background:var(--ink); color:#fff; font-size:16px; font-weight:800; font-family:inherit; cursor:pointer; margin-top:4px; }
+  .ps-save:active{ transform:scale(.98); }
+
+  .fab{ position:absolute; right:18px; bottom:calc(74px + env(safe-area-inset-bottom)); z-index:20;
+    height:52px; padding:0 22px; border:none; border-radius:26px; background:var(--ink); color:#fff;
+    font-size:15px; font-weight:800; font-family:inherit; letter-spacing:-.3px; cursor:pointer;
+    display:flex; align-items:center; gap:7px; box-shadow:0 6px 20px rgba(58,46,40,.28); transition:transform .08s ease; }
+  /* B: 받은 하트 뱃지 */
+  .stone-thanks{ display:inline-flex; align-items:center; gap:5px; margin-top:6px; font-size:12px; font-weight:700; color:var(--ink-soft); background:#F2ECE4; padding:5px 11px; border-radius:12px; }
+  .stone-thanks .th-heart{ width:12px; height:12px; }
+  .stone-thanks .th-heart path{ fill:#C98A5E; }
+  .stone-thanks.is-new{ background:rgba(201,138,94,.16); color:#B0703F; }
+  .stone-thanks .new-dot{ font-size:10px; font-weight:800; color:#fff; background:#C98A5E; padding:1px 6px; border-radius:8px; margin-left:2px; letter-spacing:.5px; }
+  .tab{ position:relative; }
+  .tab.has-new::after{ content:""; position:absolute; top:6px; left:50%; margin-left:8px; width:7px; height:7px; border-radius:50%; background:#C98A5E; }    height:52px; padding:0 22px; border:none; border-radius:26px; background:var(--ink); color:#fff;
+    font-size:15px; font-weight:800; font-family:inherit; letter-spacing:-.3px; cursor:pointer;
+    display:flex; align-items:center; gap:7px; box-shadow:0 6px 20px rgba(58,46,40,.28); transition:transform .08s ease; }
+  .fab:active{ transform:scale(.95); }
+  .fab .plus{ font-size:20px; font-weight:700; line-height:1; margin-top:-2px; }
+  .fab.hide{ display:none !important; }
+  .tabbar{ flex:0 0 auto; display:flex; gap:6px; padding:8px 14px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--card-line); }
+  .tab{ flex:1; text-align:center; padding:8px 0; border-radius:14px; font-size:12.5px; font-weight:700; color:var(--text-faint); background:transparent; border:none; font-family:inherit; cursor:pointer; transition:all .12s; }
+  .tab.on{ color:var(--ink); }
+  .tab .ic{ display:block; width:22px; height:22px; margin:0 auto 3px; opacity:.55; }
+  .tab.on .ic{ opacity:1; }
+
+  /* CTA */
+  .cta-wrap{ flex:0 0 auto; padding:12px 20px calc(16px + env(safe-area-inset-bottom)); }
+  .cta{
+    width:100%; border:none; border-radius:18px; padding:17px 20px; font-size:17px; font-weight:800;
+    letter-spacing:-.3px; color:#fff; background:var(--ink); cursor:pointer; transition:transform .08s ease;
+  }
+  .cta:active{ transform:scale(.975); }
+  .cta.ghost{ background:#fff; color:var(--ink); border:1.5px solid var(--card-line); }
+
+  /* 새기기 애니메이션 오버레이 (WebView 호환: inset 금지 → 4방향 명시) */
+  .carve{
+    position:fixed; top:0; left:0; right:0; bottom:0; z-index:60; background:rgba(255,255,255,.97);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .3s; padding:30px; text-align:center;
+  }
+  .carve.on{ opacity:1; pointer-events:auto; }
+  .carve .newstone{ animation:drop .7s cubic-bezier(.2,.9,.3,1.2); }
+  @keyframes drop{ 0%{transform:translateY(-40px) scale(.8);opacity:0} 60%{transform:translateY(4px) scale(1.05)} 100%{transform:translateY(0) scale(1);opacity:1} }
+  .carve .ctxt{ font-size:18px; font-weight:700; color:var(--ink); margin-top:20px; letter-spacing:-.3px; }
+  .carve .csub{ font-size:14px; color:var(--text-dim); margin-top:8px; }
+  .carve .cproof{ font-size:13.5px; color:var(--warm); font-weight:700; margin-top:22px; }
+
+  /* 토스트 */
+  .toast{ position:fixed; left:50%; bottom:96px; transform:translateX(-50%) translateY(10px); background:var(--ink); color:#fff; font-size:14px; font-weight:600; padding:12px 20px; border-radius:14px; z-index:80; opacity:0; pointer-events:none; transition:all .28s ease; }
+  .toast.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* 상세 시트 (WebView 호환: inset 금지 → 4방향 명시) */
+  .sheet-dim{ position:fixed; top:0; left:0; right:0; bottom:0; z-index:50; background:rgba(40,34,30,.4); display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .25s; }
+  .sheet-dim.on{ opacity:1; pointer-events:auto; }
+  .sheet{ width:100%; background:#fff; border-radius:26px 26px 0 0; padding:14px 22px calc(22px + env(safe-area-inset-bottom)); transform:translateY(100%); transition:transform .3s cubic-bezier(.2,.8,.2,1); text-align:center; }
+  .sheet-dim.on .sheet{ transform:translateY(0); }
+  .sheet .grab{ width:40px; height:4px; background:#E4E0DA; border-radius:2px; margin:0 auto 18px; }
+  .sheet .s-when{ font-size:13px; color:var(--warm); font-weight:700; margin-bottom:12px; }
+  .sheet .s-txt{ font-size:20px; font-weight:700; color:var(--ink); line-height:1.5; margin-bottom:10px; }
+  .sheet .s-cat{ display:inline-block; font-size:12px; font-weight:700; color:var(--text-dim); background:#EFEBE6; padding:3px 12px; border-radius:12px; margin-bottom:20px; }
+  .sheet .s-share{ width:100%; padding:15px; border-radius:16px; border:none; background:var(--ink); color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+
+  /* 공유 카드 미리보기 시트 (WebView 호환: 4방향 명시) */
+  .share-dim{ position:fixed; top:0; left:0; right:0; bottom:0; z-index:70; background:rgba(40,34,30,.5); display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .25s; }
+  .share-dim.on{ opacity:1; pointer-events:auto; }
+  .share-modal{ width:100%; background:#fff; border-radius:26px 26px 0 0; padding:14px 22px calc(20px + env(safe-area-inset-bottom)); transform:translateY(100%); transition:transform .3s cubic-bezier(.2,.8,.2,1); text-align:center; }
+  .share-dim.on .share-modal{ transform:translateY(0); }
+  .share-modal .grab{ width:40px; height:4px; background:#E4E0DA; border-radius:2px; margin:0 auto 16px; }
+  .share-canvas{ width:100%; max-width:270px; height:auto; border-radius:18px; box-shadow:0 8px 30px rgba(58,46,40,.14); margin:0 auto 18px; display:block; }
+  .share-btns{ display:flex; gap:10px; }
+  .share-btns .cta{ font-size:15.5px; padding:15px; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <div class="brand"><span class="dot" id="dot"></span> talkall 알림</div>
-    <button class="gear" onclick="openCfg()">⚙️</button>
+<div class="app">
+  <!-- 홈 상단 고정 프로필 바 (돌탑/고마움밭/되돌아보기에서 노출) -->
+  <div class="profile-bar hide" id="profileBar">
+      <div class="pb-stone" id="pbStone"></div>
+      <div class="pb-info">
+        <div class="pb-name" id="pbName">따뜻한 조약돌</div>
+        <div class="pb-days" id="pbDays">고마운돌과 함께한 지 1일</div>
+      </div>
+      <button class="pb-settings" id="pbSettings" aria-label="설정">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.7"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 00-2-1.2L14 1h-4l-.5 2.6a7 7 0 00-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 002 1.2L10 21h4l.5-2.6a7 7 0 002-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  <!-- ===== 인트로 ===== -->
+  <div class="screen intro" id="s-intro">
+    <div class="stack">
+      <!-- 쌓인 돌무더기 (아래 넓고 위로 좁게, 서로 겹침) -->
+      <svg width="200" height="230" viewBox="0 0 200 230">
+        <!-- 1층: 바닥 (가장 넓음, 큰 돌 2개) -->
+        <ellipse cx="70" cy="196" rx="52" ry="26" fill="#E8C9B8"/>
+        <ellipse cx="132" cy="200" rx="46" ry="24" fill="#C7D8E4"/>
+        <!-- 2층 -->
+        <ellipse cx="100" cy="158" rx="48" ry="24" fill="#CBDCC9"/>
+        <!-- 3층 (2개, 하나는 표정) -->
+        <ellipse cx="76" cy="122" rx="38" ry="21" fill="#6B5D54"/>
+        <circle cx="66" cy="120" r="2.6" fill="#fff"/><circle cx="88" cy="120" r="2.6" fill="#fff"/>
+        <path d="M66 127 Q77 134 88 127" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <ellipse cx="126" cy="120" rx="36" ry="20" fill="#D6CDE6"/>
+        <!-- 4층 -->
+        <ellipse cx="104" cy="86" rx="40" ry="22" fill="#E4E0DA"/>
+        <circle cx="94" cy="84" r="2.6" fill="#3A2E28"/><circle cx="116" cy="84" r="2.6" fill="#3A2E28"/>
+        <path d="M94 91 Q105 98 116 91" stroke="#3A2E28" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <!-- 5층: 꼭대기 (다크, 윙크) -->
+        <ellipse cx="100" cy="50" rx="34" ry="20" fill="#3A2E28"/>
+        <path d="M84 46 q4 -4 8 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <circle cx="112" cy="46" r="2.6" fill="#fff"/>
+        <path d="M86 55 Q100 62 114 55" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>오늘 고마웠던 걸<br>돌에 새겨보세요</h1>
+    <!-- 소셜프루프: 실데이터만. 데이터 도착 전엔 숨김(가짜 숫자 금지). -->
+    <div class="proof hide" id="introProof">지금까지 <b id="introProofN">0</b>개의 고마움이 새겨졌어요</div>
+    <button class="intro-cta" id="introCta">고마운돌 새기러 가기</button>
   </div>
 
-  <div class="err" id="err"></div>
-
-  <div class="hero" id="hero">
-    <div class="lb">💬 talkall 누적 사용</div>
-    <div class="num" id="num">—</div>
-    <div class="gain" id="gain" style="visibility:hidden">+0</div>
-    <div class="sub" id="sub">감시 대기 중</div>
+  <!-- ===== 입력 ===== -->
+  <div class="screen compose hide" id="s-compose">
+    <h2>어떤 게 고마웠나요?</h2>
+    <p class="desc">받은 고마움을 한 줄로 새겨보세요.</p>
+    <p class="label">누구에게</p>
+    <div class="chips" id="chips">
+      <div class="chip" data-cat="가족">가족</div>
+      <div class="chip" data-cat="친구">친구</div>
+      <div class="chip" data-cat="연인">연인</div>
+      <div class="chip" data-cat="나에게">나에게</div>
+      <div class="chip" data-cat="낯선이">낯선 사람</div>
+      <div class="chip" data-cat="일상">일상</div>
+    </div>
+    <p class="label">고마운 한 줄</p>
+    <input class="wish-input" id="txt" maxlength="30" placeholder="예: 엄마가 말없이 반찬을 보내주셨다" />
+    <div class="count" id="count">0 / 30</div>
   </div>
 
-  <div class="row">
-    <div class="stat"><div class="k">이번 세션 증가</div><div class="v" id="sess">+0</div></div>
-    <div class="stat"><div class="k">마지막 증가</div><div class="v sm" id="lasthit">아직 없음</div></div>
+  <!-- ===== 돌탑 ===== -->
+  <div class="screen hide" id="s-tower">
+    <div class="tower-profile" id="towerProfile">
+      <div class="tp-head">
+        <div class="tp-stone" id="tpStone"></div>
+        <div class="tp-info">
+          <div class="tp-name" id="tpName">잔잔한 알돌</div>
+          <div class="tp-bio" id="tpBio">한 줄 소개를 남겨보세요</div>
+          <div class="tp-since" id="tpSince">2026. 7. 7 부터</div>
+        </div>
+      </div>
+      <div class="tp-stats">
+        <div class="tp-stat"><b id="tpDays">1</b><span>함께한 날</span></div>
+        <div class="tp-stat"><b id="tpCount">0</b><span>새긴 고마움</span></div>
+        <div class="tp-stat"><b id="tpThanks">0</b><span>받은 하트</span></div>
+      </div>
+      <div class="tp-nick-row">
+        <input class="tp-nick-input" id="tpNickInput" maxlength="16" placeholder="닉네임 (비우면 자동)" />
+        <button class="tp-dice" id="tpDice" aria-label="랜덤 이름">🎲</button>
+        <button class="tp-save" id="tpSave">저장</button>
+      </div>
+      <div class="tp-bio-row">
+        <input class="tp-bio-input" id="tpBioInput" maxlength="30" placeholder="한 줄 소개 (선택)" />
+      </div>
+      <div class="tp-colors" id="tpColors"></div>
+    </div>
+    <div class="tower-head">
+      <h2>내 고마운 돌탑</h2>
+      <!-- todayProof: 실데이터만. 없으면 숨김 -->
+      <div class="sub"><b id="myCount">0</b>개의 고마움이 쌓였어요<span id="todayProofWrap" class="hide"> · <span id="todayProof"></span></span></div>
+    </div>
+    <div class="tower-scroll">
+      <div class="tower" id="towerList"></div>
+      <div class="empty-tower hide" id="emptyTower">아직 돌이 없어요.<br>첫 고마움을 새겨보세요.</div>
+    </div>
   </div>
 
-  <div class="seg" id="seg">
-    <button data-s="5">5초</button>
-    <button data-s="10" class="on">10초</button>
-    <button data-s="30">30초</button>
-    <button data-s="60">1분</button>
+  <!-- ===== 고마움 밭 (남의 고마움 피드) ===== -->
+  <div class="screen field hide" id="s-field">
+    <div class="field-head">
+      <h2>고마움 밭</h2>
+      <div class="field-sub" id="fieldProofWrap" style="display:none">오늘 <b id="fieldProof"></b>개의 고마움이 새겨졌어요</div>
+      <div class="field-sorts" id="fieldSorts">
+        <button class="sort-chip on" data-sort="recent">최신</button>
+        <button class="sort-chip" data-sort="popular">인기</button>
+        <button class="sort-chip" data-sort="random">랜덤</button>
+      </div>
+    </div>
+    <div class="field-scroll" id="fieldList">
+      <div class="field-loading" id="fieldLoading">고마움을 불러오는 중…</div>
+    </div>
   </div>
 
-  <div class="ctrls">
-    <button class="btn go" id="goBtn" onclick="toggleWatch()">감시 시작</button>
-    <button class="btn ghost" id="sndBtn" onclick="toggleSound()" title="소리">🔔</button>
-    <button class="btn ghost" id="notiBtn" onclick="askNoti()" title="알림">📩</button>
+  <!-- ===== 되돌아보기 ===== -->
+  <div class="screen review hide" id="s-review">
+    <h2>되돌아보기</h2>
+    <div id="reviewBody"></div>
   </div>
 
-  <div class="log-h">최근 증가 · <span id="checkAt" style="color:#4A5060">확인 전</span></div>
-  <div class="log" id="log"><div class="empty">감시를 시작하면<br>카운트가 늘 때마다 여기 뜨고 알림이 와요</div></div>
+  <!-- 새 고마움 새기기 (돌탑/되돌아보기에서 항상 노출) -->
+  <button class="fab hide" id="fab"><span class="plus">+</span>새기기</button>
 
-  <div class="foot">조회 전용(<code style="color:#4A5060">/</code>)만 확인 · 실제 카운트엔 영향 없음</div>
+  <!-- 하단 탭 (이모지 마커 금지 → 인라인 SVG) -->
+  <div class="tabbar hide" id="tabbar">
+    <button class="tab on" data-tab="tower">
+      <svg class="ic" viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="16.5" rx="7.5" ry="4" fill="currentColor"/><ellipse cx="12" cy="9.5" rx="5.5" ry="3.4" fill="currentColor"/></svg>
+      돌탑
+    </button>
+    <button class="tab" data-tab="field">
+      <svg class="ic" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.6" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5c2.4 2.3 2.4 14.7 0 17M12 3.5c-2.4 2.3-2.4 14.7 0 17" stroke="currentColor" stroke-width="1.6"/></svg>
+      고마움 밭
+    </button>
+    <button class="tab" data-tab="review">
+      <svg class="ic" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      되돌아보기
+    </button>
+  </div>
+
+  <!-- 나의 페이지 (설정) -->
+  <div class="sheet-dim" id="profileDim">
+    <div class="sheet profile-sheet">
+      <div class="grab"></div>
+      <div class="ps-head">
+        <div class="ps-stone" id="psStone"></div>
+        <div class="ps-title" id="psName">따뜻한 조약돌</div>
+        <div class="ps-since" id="psSince">2026. 7. 7 부터</div>
+      </div>
+      <div class="ps-stats">
+        <div class="ps-stat"><b id="psDays">1</b><span>함께한 날</span></div>
+        <div class="ps-stat"><b id="psCount">0</b><span>새긴 고마움</span></div>
+        <div class="ps-stat"><b id="psHearts">0</b><span>받은 하트</span></div>
+      </div>
+      <div class="ps-field">
+        <label class="ps-label">닉네임</label>
+        <div class="ps-nick-row">
+          <input class="ps-input" id="psNickInput" maxlength="12" placeholder="따뜻한 조약돌" />
+          <button class="ps-dice" id="psDice" aria-label="랜덤">🎲</button>
+        </div>
+        <div class="ps-hint">비워두면 예쁜 이름이 자동으로 붙어요</div>
+      </div>
+      <div class="ps-field">
+        <label class="ps-label">내 대표 돌 색</label>
+        <div class="ps-colors" id="psColors"></div>
+      </div>
+      <button class="ps-save" id="psSave">저장</button>
+    </div>
+  </div>
+
+  <!-- A: 회상 배너 (열면 지난 고마움 불쑥) -->
+  <div class="recall-banner hide" id="recallBanner">
+    <div class="recall-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke="#B0703F" stroke-width="1.8" fill="none"/><path d="M12 7.5V12l3 2" stroke="#B0703F" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></div>
+    <div class="recall-body">
+      <div class="recall-when" id="recallWhen"></div>
+      <div class="recall-text" id="recallText"></div>
+    </div>
+    <button class="recall-close" id="recallClose">✕</button>
+  </div>
+
+  <!-- 나의 페이지 (프로필 설정) -->
+  <div class="sheet-dim" id="myDim">
+    <div class="sheet my-sheet">
+      <div class="grab"></div>
+      <div class="my-stone" id="myStone"></div>
+      <div class="my-name" id="myName">따뜻한 조약돌</div>
+      <div class="my-since" id="mySince">고마운돌과 함께한 지 1일</div>
+      <div class="my-stats">
+        <div class="my-stat"><b id="myStatCount">0</b><span>새긴 고마움</span></div>
+        <div class="my-stat"><b id="myStatThanks">0</b><span>받은 하트</span></div>
+        <div class="my-stat"><b id="myStatStart">-</b><span>시작한 날</span></div>
+      </div>
+
+      <div class="my-section">
+        <div class="my-label">닉네임</div>
+        <div class="my-nick-row">
+          <input class="my-nick-input" id="myNickInput" maxlength="16" placeholder="닉네임을 정해보세요" />
+          <button class="my-nick-save" id="myNickSave">저장</button>
+        </div>
+        <div class="my-nick-hint" id="myNickHint">정하지 않으면 랜덤 이름으로 표시돼요</div>
+      </div>
+
+      <div class="my-section">
+        <div class="my-label">내 대표 돌</div>
+        <div class="my-stone-picker" id="myStonePicker"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA (입력 화면 전용, 인트로엔 자체 버튼 있음) -->
+  <div class="cta-wrap hide" id="ctaWrap">
+    <button class="cta" id="cta">돌에 새기기</button>
+  </div>
 </div>
 
-<!-- 설정 시트 -->
-<div class="sheet" id="cfg" onclick="if(event.target===this)closeCfg()">
-  <div class="sheet-in">
-    <h3>설정</h3>
-    <div class="fld"><label>카운터 주소 (조회 · GET /)</label><input id="cfgUrl" spellcheck="false"></div>
-    <div class="fld"><label>JSON에서 읽을 필드명</label><input id="cfgField" spellcheck="false" placeholder="count"></div>
-    <button class="btn go" onclick="saveCfg()">저장</button>
+<!-- 새기기 애니메이션 -->
+<div class="carve" id="carve">
+  <svg class="newstone" width="130" height="110" viewBox="0 0 130 110">
+    <path d="M22 66 Q16 34 56 30 Q104 26 116 56 Q122 86 82 98 Q40 104 28 82 Q20 74 22 66Z" fill="#8A8F96"/>
+    <circle cx="54" cy="60" r="3" fill="#3A2E28"/><circle cx="84" cy="60" r="3" fill="#3A2E28"/>
+    <path d="M56 72 Q69 82 82 72" stroke="#3A2E28" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </svg>
+  <div class="ctxt" id="carveTxt">고마움을 새겼어요</div>
+  <div class="csub" id="carveSub"></div>
+  <!-- 실데이터만. todayUsers 실수신 시에만 노출 -->
+  <div class="cproof hide" id="carveProof"></div>
+</div>
+
+<!-- 상세 시트 -->
+<div class="sheet-dim" id="sheetDim">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="s-when" id="sWhen"></div>
+    <div class="s-txt" id="sTxt"></div>
+    <div class="s-cat" id="sCat"></div>
+    <button class="s-share" id="sShare">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="14" rx="8" ry="6" fill="#fff"/><circle cx="9.5" cy="13" r="1.3" fill="#3A2E28"/><circle cx="14.5" cy="13" r="1.3" fill="#3A2E28"/><path d="M9.5 16.5Q12 18.5 14.5 16.5" stroke="#3A2E28" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
+      고마운돌 카드로 나누기
+    </button>
   </div>
 </div>
+
+<!-- 공유 카드 미리보기 -->
+<div class="share-dim" id="shareDim">
+  <div class="share-modal">
+    <div class="grab"></div>
+    <canvas id="shareCanvas" class="share-canvas" width="1080" height="1350"></canvas>
+    <div class="share-btns">
+      <button class="cta" id="saveImgBtn">이미지로 저장</button>
+      <button class="cta ghost" id="shareTxtBtn">텍스트로 공유</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
-  // ===== 설정 =====
-  const DEFAULT = { url:'https://talkreport-counter.san0231ai.workers.dev/', field:'count' };
-  let CFG = load('talkall_alarm_cfg', DEFAULT);
-  let interval = 10, timer=null, watching=false;
-  let last=null, baseline=null, sessionGain=0, soundOn=true;
-  let ctx=null;
+/* 핀치줌 / 더블탭 줌 차단 (삼성 브라우저 등 viewport 무시 대비) */
+document.addEventListener('gesturestart', e=>e.preventDefault());
+document.addEventListener('gesturechange', e=>e.preventDefault());
+document.addEventListener('touchmove', e=>{ if(e.touches.length>1) e.preventDefault(); }, {passive:false});
+(function(){ let lt=0; document.addEventListener('touchend', e=>{ const n=Date.now(); if(n-lt<=300) e.preventDefault(); lt=n; }, {passive:false}); })();
 
-  function load(k,def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
-  function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+/* 고마운돌 v0.2
+   - 개인 돌 기록: localStorage (thankstone_stones_v1) — 데이터 키는 유지(기존 돌 보존)
+   - 소셜프루프(총 개수 / 오늘 N명): 토스 랭킹·카운트 API 실데이터로 교체.
+       가짜 숫자 금지 — 실데이터 도착 전/실패 시엔 표시하지 않는다.
+   - 공유: 카드 canvas 렌더 → SAVE_IMAGE / SHARE_TEXT postMessage.
+   ─────────────────────────────────────────────────────────────
+   [토스 브릿지 계약]  이 HTML ↔ App.tsx(토스 SDK 보유)
+   → GET_THANKS_COUNT              (카운트/랭킹 조회 요청)
+   ← COUNT_RESULT {total, todayUsers}  또는 {error:true}
+   → INCR_THANKS_COUNT             (새기기 완료 시 카운트 +1)   ← COUNT_RESULT 재수신
+   → SAVE_IMAGE {fileName, mimeType, base64}  (granite.config.ts: photos read 권한)
+   → SHARE_TEXT {text}
+   → LOG_EVENT {name}              (운영 모니터링 전환 지표)
+   App.tsx가 없는 순수 미리보기 환경에선 응답이 없으므로 프루프는 계속 숨김(정직). */
 
-  // ===== 카운트 조회 =====
-  async function poll(){
-    const url = CFG.url + (CFG.url.indexOf('?')<0?'?':'&') + '_t=' + Date.now(); // 캐시 방지
-    try{
-      const r = await fetch(url, {method:'GET', cache:'no-store'});
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      let count;
-      const txt = await r.text();
-      try{ const j=JSON.parse(txt); count = (CFG.field && j[CFG.field]!=null)?j[CFG.field]:firstNum(txt); }
-      catch(e){ count = firstNum(txt); }
-      if(typeof count!=='number' || isNaN(count)) throw new Error('숫자 파싱 실패');
-      hideErr();
-      onCount(count);
-      setCheck();
-    }catch(e){
-      showErr(e.message);
-      setDot(false);
-    }
-  }
-  function firstNum(s){ const m=String(s).replace(/,/g,'').match(/-?\d+(\.\d+)?/); return m?parseFloat(m[0]):NaN; }
+const KEY='thankstone_stones_v1';
+let stones = load();
+let selectedCat = null;
 
-  function onCount(count){
-    document.getElementById('num').textContent = count.toLocaleString();
-    if(baseline===null){ baseline=count; last=count; save('talkall_alarm_last', count); return; }
-    if(count>last){
-      const delta = count-last;
-      sessionGain += delta;
-      fireAlarm(delta, count);
-      addLog(delta, count);
-      document.getElementById('sess').textContent = '+'+sessionGain;
-      document.getElementById('lasthit').textContent = nowStr();
-      const g=document.getElementById('gain'); g.style.visibility='visible'; g.textContent='방금 +'+delta;
-    }
-    last = count;
-    save('talkall_alarm_last', count);
-  }
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||[]; }catch(e){ return []; } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(stones)); }catch(e){} }
 
-  // ===== 알림 발동 =====
-  function fireAlarm(delta, count){
-    const hero=document.getElementById('hero'), num=document.getElementById('num');
-    hero.classList.remove('flash'); void hero.offsetWidth; hero.classList.add('flash');
-    num.classList.remove('pop'); void num.offsetWidth; num.classList.add('pop');
-    if(soundOn) beep();
-    if(navigator.vibrate) navigator.vibrate([180,90,180]);
-    if('Notification' in window && Notification.permission==='granted'){
-      try{ new Notification('talkall 🔔 +'+delta, { body:'누적 '+count.toLocaleString()+'명', tag:'talkall', renotify:true }); }catch(e){}
-    }
-  }
-  function beep(){
-    try{
-      if(!ctx) ctx=new (window.AudioContext||window.webkitAudioContext)();
-      if(ctx.state==='suspended') ctx.resume();
-      const t=ctx.currentTime;
-      [880,1320].forEach((f,i)=>{
-        const o=ctx.createOscillator(), g=ctx.createGain();
-        o.type='sine'; o.frequency.value=f;
-        o.connect(g); g.connect(ctx.destination);
-        const st=t+i*0.14;
-        g.gain.setValueAtTime(0.0001, st);
-        g.gain.exponentialRampToValueAtTime(0.35, st+0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, st+0.13);
-        o.start(st); o.stop(st+0.14);
-      });
-    }catch(e){}
-  }
+/* ===== 프로필 시스템 ===== */
+const PKEY='thankstone_profile_v1';
+const NICK_ADJ=['따뜻한','포근한','잔잔한','다정한','고요한','든든한','소소한','물결진','햇살든','바람든','정다운','넉넉한'];
+const NICK_NOUN=['조약돌','돌멩이','자갈','몽돌','차돌','강돌','알돌','들돌'];
+function genNick(){
+  const a=NICK_ADJ[Math.floor(Math.random()*NICK_ADJ.length)];
+  const n=NICK_NOUN[Math.floor(Math.random()*NICK_NOUN.length)];
+  const tail=Date.now().toString(36).slice(-4)+Math.random().toString(36).slice(2,4); // 내부 식별용(숨김)
+  return { name:a+' '+n, tail, custom:false };
+}
+function loadProfile(){
+  let p; try{ p=JSON.parse(localStorage.getItem(PKEY)); }catch(e){}
+  if(!p || !p.name){ p=genNick(); p.startTs=Date.now(); saveProfile(p); }
+  if(!p.startTs){ p.startTs=Date.now(); saveProfile(p); }
+  return p;
+}
+function saveProfile(p){ try{ localStorage.setItem(PKEY, JSON.stringify(p)); }catch(e){} }
+let profile = loadProfile();
+// 서버 저장/표시에 쓰는 유일 식별 닉네임 (꼬리 포함, 화면엔 name만 노출)
+function nickForServer(){ return profile.custom ? profile.name : (profile.name+' '+profile.tail); }
+function daysSince(ts){ return Math.max(0, Math.floor((Date.now()-ts)/86400000)); }
 
-  // ===== 로그 =====
-  function addLog(delta, count){
-    const log=document.getElementById('log');
-    if(log.querySelector('.empty')) log.innerHTML='';
-    const li=document.createElement('div'); li.className='li';
-    li.innerHTML='<span class="lt">'+nowStr()+'</span><span class="ld">+'+delta+'</span><span class="lc">누적 '+count.toLocaleString()+'</span>';
-    log.insertBefore(li, log.firstChild);
-    while(log.children.length>40) log.removeChild(log.lastChild);
-  }
+const S = {
+  intro:document.getElementById('s-intro'),
+  compose:document.getElementById('s-compose'),
+  tower:document.getElementById('s-tower'),
+  field:document.getElementById('s-field'),
+  review:document.getElementById('s-review'),
+};
+const ctaWrap=document.getElementById('ctaWrap');
+const cta=document.getElementById('cta');
+const tabbar=document.getElementById('tabbar');
 
-  // ===== 감시 on/off =====
-  function toggleWatch(){
-    watching=!watching;
-    const b=document.getElementById('goBtn');
-    if(watching){
-      if(!ctx){ try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } // 사용자 제스처로 오디오 언락
-      b.textContent='감시 정지'; b.classList.add('stop');
-      document.getElementById('sub').textContent=interval+'초마다 확인 중…';
-      setDot(true);
-      poll(); timer=setInterval(poll, interval*1000);
-    }else{
-      b.textContent='감시 시작'; b.classList.remove('stop');
-      document.getElementById('sub').textContent='감시 정지됨';
-      setDot(false);
-      clearInterval(timer); timer=null;
-    }
+function show(name){
+  Object.values(S).forEach(s=>s.classList.add('hide'));
+  S[name].classList.remove('hide');
+  // 상단 프로필 바: 고마움밭/되돌아보기에서만 (돌탑은 자체 큰 프로필 영역 사용)
+  const pb=document.getElementById('profileBar');
+  if(pb){
+    const showPb = (name==='field'||name==='review');
+    pb.classList.toggle('hide', !showPb);
+    if(showPb) renderProfileBar();
   }
-  function setInt(s){
-    interval=s;
-    [...document.querySelectorAll('#seg button')].forEach(x=>x.classList.toggle('on', +x.dataset.s===s));
-    if(watching){ clearInterval(timer); timer=setInterval(poll, interval*1000); document.getElementById('sub').textContent=interval+'초마다 확인 중…'; }
-  }
+  if(name==='tower') renderTowerProfile();
+}
 
-  // ===== 소리/알림 권한 =====
-  function toggleSound(){ soundOn=!soundOn; const b=document.getElementById('sndBtn'); b.textContent=soundOn?'🔔':'🔕'; b.classList.toggle('off',!soundOn); if(soundOn) beep(); }
-  function askNoti(){
-    if(!('Notification' in window)){ alert('이 브라우저는 알림을 지원하지 않아요'); return; }
-    Notification.requestPermission().then(p=>{
-      const b=document.getElementById('notiBtn');
-      if(p==='granted'){ b.textContent='✅'; try{ new Notification('talkall 알림 켜짐 🔔',{body:'이제 카운트가 늘면 알려드려요'}); }catch(e){} }
-      else b.textContent='🚫';
+let toastT;
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),1600); }
+
+/* ============ 토스 브릿지 ============ */
+function postToApp(msg){
+  try{ if(window.ReactNativeWebView && window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify(msg)); }catch(e){}
+  try{ if(window.parent && window.parent!==window) window.parent.postMessage(msg,'*'); }catch(e){}
+}
+
+/* ===== Firebase Realtime DB (REST fetch) — San 검증 방식 =====
+   ※ 출시 전 FIREBASE_DB_URL을 실제 DB 주소로 교체.
+   같은 프로젝트 재사용 가능, PATH만 고마운돌 전용으로 분리. */
+const FIREBASE_DB_URL = 'https://sandol-13f4e-default-rtdb.asia-southeast1.firebasedatabase.app';
+const FIREBASE_PATH = 'thankstone_field';
+const fbEnabled = () => FIREBASE_DB_URL && FIREBASE_DB_URL.startsWith('https://') && !FIREBASE_DB_URL.includes('YOUR-PROJECT');
+
+async function fbAdd(entry){
+  if(!fbEnabled()) return null;
+  try{
+    const res=await fetch(FIREBASE_DB_URL+'/'+FIREBASE_PATH+'.json',{
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(entry)
     });
+    if(!res.ok) return null;
+    const d=await res.json(); return d&&d.name?d.name:null;   // 생성 키
+  }catch(e){ return null; }
+}
+async function fbFetchAll(limit){
+  if(!fbEnabled()) return null;
+  try{
+    const res=await fetch(FIREBASE_DB_URL+'/'+FIREBASE_PATH+'.json');
+    if(!res.ok) return null;
+    const data=await res.json(); if(!data) return [];
+    return Object.entries(data).map(([k,v])=>({...v, _fbKey:k})).slice(0, limit||200);
+  }catch(e){ return null; }
+}
+async function fbPatch(key, fields){
+  if(!fbEnabled()||!key) return false;
+  try{
+    const res=await fetch(FIREBASE_DB_URL+'/'+FIREBASE_PATH+'/'+key+'.json',{
+      method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(fields)
+    });
+    return res.ok;
+  }catch(e){ return false; }
+}
+
+function logEvent(name){ postToApp({type:'LOG_EVENT', name}); }
+
+/* 소셜프루프 상태 — 실데이터만 반영 */
+const proof = { total:null, todayUsers:null };
+function applyCount(d){
+  if(!d || d.error) return;                         // 실패 → 아무것도 바꾸지 않음(숨김 유지)
+  if(typeof d.total==='number') proof.total=d.total;
+  if(typeof d.todayUsers==='number') proof.todayUsers=d.todayUsers;
+  renderProof();
+}
+function renderProof(){
+  // 인트로: 총 개수
+  const ip=document.getElementById('introProof');
+  if(typeof proof.total==='number' && proof.total>0){
+    document.getElementById('introProofN').textContent=proof.total.toLocaleString();
+    ip.classList.remove('hide');
+  }else ip.classList.add('hide');
+  // 돌탑 헤더: 오늘 N명
+  const wrap=document.getElementById('todayProofWrap');
+  if(typeof proof.todayUsers==='number' && proof.todayUsers>0){
+    document.getElementById('todayProof').textContent='오늘 '+proof.todayUsers.toLocaleString()+'명이 함께 새겼어요';
+    wrap.classList.remove('hide');
+  }else wrap.classList.add('hide');
+}
+window.addEventListener('message', ev=>{
+  let d=ev.data;
+  if(typeof d==='string'){ try{ d=JSON.parse(d); }catch(e){ return; } }
+  if(!d || !d.type) return;
+  if(d.type==='COUNT_RESULT') applyCount(d);
+  else if(d.type==='FEED_RESULT') applyFeed(d);   // 남의 고마움 목록
+  else if(d.type==='MY_THANKS_RESULT') applyMyThanks(d);   // 내 글이 받은 하트
+});
+// 진입 시 실데이터 요청(응답 없으면 프루프 숨김 유지)
+postToApp({type:'GET_THANKS_COUNT'});
+
+/* 돌 SVG (인덱스별로 살짝 다른 모양/색) */
+const STONE_SHAPES=[
+  {d:"M28 60 Q22 30 60 26 Q104 22 116 52 Q122 82 84 94 Q42 100 30 78 Q22 70 28 60Z", fill:"#8A8F96"},
+  {d:"M30 58 Q26 32 62 30 Q100 28 112 50 Q120 78 84 90 Q46 96 32 76 Q26 68 30 58Z", fill:"#E4E0DA"},
+  {d:"M26 62 Q20 34 58 28 Q106 24 118 56 Q124 84 82 96 Q40 102 28 80 Q20 72 26 62Z", fill:"#B8AFA7"},
+  {d:"M30 60 Q24 32 60 28 Q102 24 114 54 Q120 80 84 92 Q44 98 30 78 Q24 70 30 60Z", fill:"#6B5D54"},
+];
+// 돌 색상: 무채색 + 연한 파스텔 다채롭게 (연하게, 톤 통일)
+const STONE_COLORS=[
+  "#8A8F96", // 회색
+  "#E4E0DA", // 크림
+  "#B8AFA7", // 웜그레이
+  "#6B5D54", // 브라운
+  "#E8C9B8", // 연살구
+  "#CBDCC9", // 연민트
+  "#D6CDE6", // 연라벤더
+  "#C7D8E4", // 연하늘
+  "#EAD9C0", // 연베이지
+  "#E5C7CC", // 연핑크
+];
+// 눈 표정 세트 (다양하게)
+const STONE_EYES=[
+  'dot',      // 기본 점
+  'oval',     // 동그란 눈
+  'happy',    // 반달(^ ^)
+  'wink',     // 윙크
+  'sleepy',   // 졸린(-  -)
+];
+// 입 표정 세트
+const STONE_MOUTHS=[
+  'smile',    // 미소
+  'grin',     // 큰 웃음
+  'line',     // 일자
+  'small',    // 작은 오
+  'wide',     // 활짝
+];
+function eyePath(type, cx, eye){
+  // 왼/오 눈을 각각 그림 (cx: 중심 x, 좌우 대칭)
+  const lx=56, rx=86, cy=58;
+  switch(type){
+    case 'oval':   return `<ellipse cx="${lx}" cy="${cy}" rx="3.4" ry="4.2" fill="${eye}"/><ellipse cx="${rx}" cy="${cy}" rx="3.4" ry="4.2" fill="${eye}"/>`;
+    case 'happy':  return `<path d="M52 60 Q56 54 60 60" stroke="${eye}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M82 60 Q86 54 90 60" stroke="${eye}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`;
+    case 'wink':   return `<path d="M52 58 Q56 53 60 58" stroke="${eye}" stroke-width="2.8" fill="none" stroke-linecap="round"/><circle cx="${rx}" cy="${cy}" r="2.9" fill="${eye}"/>`;
+    case 'sleepy': return `<path d="M52 59 L60 59" stroke="${eye}" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M82 59 L90 59" stroke="${eye}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+    default:       return `<circle cx="${lx}" cy="${cy}" r="2.9" fill="${eye}"/><circle cx="${rx}" cy="${cy}" r="2.9" fill="${eye}"/>`;
   }
+}
+function mouthPath(type, eye){
+  switch(type){
+    case 'grin':  return `<path d="M60 66 Q71 80 82 66 Q71 72 60 66Z" fill="${eye}"/>`;
+    case 'line':  return `<path d="M63 70 L79 70" stroke="${eye}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`;
+    case 'small': return `<ellipse cx="71" cy="70" rx="3.2" ry="3.8" fill="${eye}"/>`;
+    case 'wide':  return `<path d="M58 67 Q71 82 84 67" stroke="${eye}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`;
+    default:      return `<path d="M60 68 Q71 78 82 68" stroke="${eye}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`;
+  }
+}
+function stoneSVG(i, w=130){
+  const shape=STONE_SHAPES[i%STONE_SHAPES.length];
+  const fill=STONE_COLORS[i%STONE_COLORS.length];
+  const eyeType=STONE_EYES[i%STONE_EYES.length];
+  const mouthType=STONE_MOUTHS[(i*2+1)%STONE_MOUTHS.length];  // 눈과 다른 주기로 조합 다양화
+  const dark=(fill==="#3A2E28"||fill==="#6B5D54");
+  const eye=dark?"#FBF6EF":"#4A3E36";
+  const h=Math.round(w*0.72);
+  return `<svg width="${w}" height="${h}" viewBox="0 0 130 100">
+    <path d="${shape.d}" fill="${fill}"/>
+    ${eyePath(eyeType, 71, eye)}
+    ${mouthPath(mouthType, eye)}
+  </svg>`;
+}
 
-  // ===== 상태 표시 =====
-  function setDot(live){ document.getElementById('dot').classList.toggle('live', live); }
-  function setCheck(){ document.getElementById('checkAt').textContent='마지막 확인 '+nowStr(); }
-  function nowStr(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
-  function showErr(m){ const e=document.getElementById('err'); e.className='err show'; e.innerHTML='⚠️ 조회 실패: '+m+'<br>CORS 때문이면 Worker에 <code>Access-Control-Allow-Origin: *</code> 헤더를 추가하세요.'; document.getElementById('sub').textContent='연결 오류 · 재시도 중'; }
-  function hideErr(){ document.getElementById('err').className='err'; }
+/* ===== 인트로 → 입력 → 돌탑 ===== */
+let stage='intro';
+// 인트로 전용 버튼 (콘텐츠와 한 덩어리, 화면 중앙)
+document.getElementById('introCta').addEventListener('click', goCompose);
+cta.addEventListener('click', ()=>{
+  if(stage==='compose'){ submit(); }
+});
+function goCompose(){
+  stage='compose'; show('compose'); cta.textContent='돌에 새기기';
+  ctaWrap.classList.remove('hide');
+  document.getElementById('fab').classList.add('hide');
+  tabbar.classList.add('hide');
+}
+// 돌탑/되돌아보기에서 새 고마움 새기기
+document.getElementById('fab').addEventListener('click', goCompose);
 
-  // ===== 설정 시트 =====
-  function openCfg(){ document.getElementById('cfgUrl').value=CFG.url; document.getElementById('cfgField').value=CFG.field; document.getElementById('cfg').classList.add('show'); }
-  function closeCfg(){ document.getElementById('cfg').classList.remove('show'); }
-  function saveCfg(){ CFG.url=document.getElementById('cfgUrl').value.trim()||DEFAULT.url; CFG.field=document.getElementById('cfgField').value.trim()||'count'; save('talkall_alarm_cfg', CFG); closeCfg(); baseline=null; if(watching) poll(); }
+document.getElementById('chips').addEventListener('click', e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on'); selectedCat=c.dataset.cat;
+});
+const txt=document.getElementById('txt');
+txt.addEventListener('input', ()=>{ document.getElementById('count').textContent=txt.value.length+' / 30'; });
 
-  // ===== init =====
-  document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>setInt(+b.dataset.s));
-  (function initNoti(){ if('Notification' in window && Notification.permission==='granted') document.getElementById('notiBtn').textContent='✅'; })();
-  // 이전에 본 값 복원 (재실행 시 헛알림 방지용 표시)
-  (function initLast(){ const v=load('talkall_alarm_last',null); if(v!=null){ document.getElementById('num').textContent=Number(v).toLocaleString(); document.getElementById('sub').textContent='마지막 기록 '+Number(v).toLocaleString()+'명 · 감시 시작을 누르세요'; } })();
+function submit(){
+  const t=txt.value.trim();
+  if(!selectedCat){ toast('누구에게인지 골라주세요'); return; }
+  if(!t){ toast('고마운 한 줄을 적어주세요'); return; }
+  if(t.length>30){ toast('30자까지 새길 수 있어요'); return; }
+  if(/(씨발|시발|광고|010\d{7})/.test(t)){ toast('적을 수 없는 표현이 있어요'); return; }
+  const myId = 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const shapeIdx = (stones.length*7 + Math.floor(Math.random()*3)); // 색·표정 조합 다양화
+  const stone={ id:myId, cat:selectedCat, text:t, ts:Date.now(), shape:shapeIdx, thanks:0, seen:0 };
+  stones.push(stone); save();
+  // 운영 모니터링 전환 지표 + 카운트 증가(실데이터)
+  logEvent('thanks_carved');
+  postToApp({type:'INCR_THANKS_COUNT'});
+  // 고마움 밭에 익명 공유 — Firebase RTDB에 저장 (San 검증 방식)
+  fbAdd({ id:myId, nick:nickForServer(), cat:selectedCat, text:t, shape:shapeIdx, ts:stone.ts, thanks:0, reports:0 })
+    .then(fbKey=>{ if(fbKey){ stone.fbKey=fbKey; save(); } });
+  carve(t);
+}
+
+/* 새기기 애니 → 돌탑 진입 */
+function carve(t){
+  document.getElementById('carveSub').textContent = '“'+t+'”';
+  // "방금 N명" — 실데이터(todayUsers) 있을 때만
+  const cp=document.getElementById('carveProof');
+  if(typeof proof.todayUsers==='number' && proof.todayUsers>0){
+    cp.textContent='방금 '+proof.todayUsers.toLocaleString()+'명이 함께 고마움을 새겼어요';
+    cp.classList.remove('hide');
+  }else cp.classList.add('hide');
+  const c=document.getElementById('carve'); c.classList.add('on');
+  setTimeout(()=>{ c.classList.remove('on'); enterTower(); }, 1900);
+}
+
+function enterTower(){
+  stage='tower';
+  show('tower'); ctaWrap.classList.add('hide'); tabbar.classList.remove('hide');
+  document.getElementById('fab').classList.remove('hide');
+  setTab('tower'); renderTower();
+  // 입력값 리셋
+  txt.value=''; document.getElementById('count').textContent='0 / 30';
+  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); selectedCat=null;
+  cta.textContent='고마운돌 새기러 가기';
+}
+
+/* ===== 돌탑 렌더 ===== */
+function renderTower(){
+  renderProfileBar();
+  document.getElementById('myCount').textContent=stones.length;
+  renderProof();
+  const list=document.getElementById('towerList');
+  const empty=document.getElementById('emptyTower');
+  if(stones.length===0){ list.innerHTML=''; empty.classList.remove('hide'); return; }
+  empty.classList.add('hide');
+  // 최신이 위로 쌓이도록(시각적으로 위=최근). column-reverse라 배열 앞이 아래.
+  list.innerHTML = stones.map((s,i)=>{
+    const th=s.thanks||0;
+    const isNew = th>(s.seen||0);
+    const badge = th>0
+      ? `<div class="stone-thanks ${isNew?'is-new':''}"><svg class="th-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.35-9.5-8.5C1 8.5 2.5 5 6 5c2 0 3.2 1.2 4 2.3C10.8 6.2 12 5 14 5c3.5 0 5 3.5 3.5 6.5C19 15.65 12 20 12 20z"/></svg>${th}명이 함께 고마워했어요${isNew?' <span class="new-dot">NEW</span>':''}</div>`
+      : '';
+    return `
+    <div class="stone-item" data-i="${i}">
+      ${stoneSVG(s.shape, 128)}
+      <div class="caption">${escapeHTML(s.text)}</div>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+/* ===== 프로필 바 + 나의 페이지 ===== */
+function renderProfileBar(){
+  const shape = (profile.stoneShape!=null)?profile.stoneShape:2;
+  document.getElementById('pbStone').innerHTML=stoneSVG(shape, 42);
+  document.getElementById('pbName').textContent=profile.name;
+  document.getElementById('pbDays').textContent='고마운돌과 함께한 지 '+(daysSince(profile.startTs)+1)+'일';
+}
+
+/* ===== 돌탑 상단 고정 프로필 ===== */
+const TP_COLOR_SHAPES=[0,1,2,3,4,5,6,7,8,9]; // 색상 선택용 (각 인덱스가 다른 색)
+function renderTowerProfile(){
+  const shape=(profile.stoneShape!=null)?profile.stoneShape:2;
+  document.getElementById('tpStone').innerHTML=stoneSVG(shape, 48);
+  document.getElementById('tpName').textContent=profile.name;
+  // 한 줄 소개
+  const bioEl=document.getElementById('tpBio');
+  if(profile.bio){ bioEl.textContent=profile.bio; bioEl.classList.remove('empty'); }
+  else{ bioEl.textContent='한 줄 소개를 남겨보세요'; bioEl.classList.add('empty'); }
+  const bioInp=document.getElementById('tpBioInput');
+  if(document.activeElement!==bioInp && !bioInp.value){ bioInp.value=profile.bio||''; }
+  const sd=new Date(profile.startTs);
+  document.getElementById('tpSince').textContent=sd.getFullYear()+'. '+(sd.getMonth()+1)+'. '+sd.getDate()+' 부터';
+  document.getElementById('tpDays').textContent=daysSince(profile.startTs)+1;
+  document.getElementById('tpCount').textContent=stones.length;
+  document.getElementById('tpThanks').textContent=stones.reduce((s,x)=>s+(x.thanks||0),0);
+  const inp=document.getElementById('tpNickInput');
+  // 포커스 중이거나 이미 입력값이 있으면 건드리지 않음(입력 보존)
+  if(document.activeElement!==inp && !inp.value){ inp.value = profile.custom ? profile.name : ''; }
+  // 색상 원형들 (현재 대표돌 색 기준 선택 표시)
+  const curColor = STONE_COLORS[shape%STONE_COLORS.length];
+  document.getElementById('tpColors').innerHTML = STONE_COLORS.map((c,idx)=>
+    `<div class="tp-color ${c===curColor?'on':''}" style="background:${c}" data-idx="${idx}"></div>`).join('');
+}
+// 닉네임 저장
+document.getElementById('tpSave').addEventListener('click', ()=>{
+  const v=document.getElementById('tpNickInput').value.trim();
+  if(v){
+    if(/(씨발|시발|광고|010\d{7})/.test(v)){ toast('쓸 수 없는 표현이에요'); return; }
+    profile.name=v; profile.custom=true;
+  } else {
+    const g=genNick(); profile.name=g.name; profile.tail=g.tail; profile.custom=false;
+  }
+  // 한 줄 소개 저장
+  const bio=document.getElementById('tpBioInput').value.trim();
+  if(bio && /(씨발|시발|광고|010\d{7})/.test(bio)){ toast('쓸 수 없는 표현이에요'); return; }
+  profile.bio = bio;   // 한 줄만 (input이라 줄바꿈 불가)
+  saveProfile(profile); renderTowerProfile();
+  toast('저장했어요');
+});
+// 주사위(랜덤 이름 새로)
+document.getElementById('tpDice').addEventListener('click', ()=>{
+  const g=genNick(); profile.name=g.name; profile.tail=g.tail; profile.custom=false;
+  saveProfile(profile);
+  document.getElementById('tpNickInput').value='';
+  renderTowerProfile();
+});
+// 색상 선택 (대표돌 색 변경 — 닉네임 입력값은 건드리지 않음)
+document.getElementById('tpColors').addEventListener('click', e=>{
+  const c=e.target.closest('.tp-color'); if(!c) return;
+  const colorIdx=+c.dataset.idx;
+  profile.stoneShape=colorIdx;
+  saveProfile(profile);
+  // 대표돌 아이콘 + 색상 선택표시만 갱신 (입력창/이름 리렌더 안 함 → 입력 중 닉네임 보존)
+  document.getElementById('tpStone').innerHTML=stoneSVG(colorIdx, 48);
+  const curColor=STONE_COLORS[colorIdx%STONE_COLORS.length];
+  document.querySelectorAll('.tp-color').forEach((el,i)=>el.classList.toggle('on', STONE_COLORS[i]===curColor));
+});
+const MY_PICK_SHAPES=[2,4,5,6,7,8,9,3,1,0]; // 대표돌 후보(색·표정 다양)
+function openMyPage(){
+  const shape=(profile.stoneShape!=null)?profile.stoneShape:2;
+  document.getElementById('myStone').innerHTML=stoneSVG(shape, 96);
+  document.getElementById('myName').textContent=profile.name;
+  document.getElementById('mySince').textContent='고마운돌과 함께한 지 '+(daysSince(profile.startTs)+1)+'일';
+  document.getElementById('myStatCount').textContent=stones.length;
+  document.getElementById('myStatThanks').textContent=stones.reduce((s,x)=>s+(x.thanks||0),0);
+  const sd=new Date(profile.startTs);
+  document.getElementById('myStatStart').textContent=(sd.getMonth()+1)+'.'+sd.getDate();
+  // 닉네임 입력: custom이면 현재값, 아니면 빈칸(placeholder에 안내)
+  const inp=document.getElementById('myNickInput');
+  inp.value = profile.custom ? profile.name : '';
+  document.getElementById('myNickHint').textContent = profile.custom
+    ? '언제든 다시 바꿀 수 있어요'
+    : '정하지 않으면 “'+profile.name+'”로 표시돼요';
+  // 대표돌 피커
+  document.getElementById('myStonePicker').innerHTML = MY_PICK_SHAPES.map(sp=>
+    `<div class="my-pick ${sp===shape?'on':''}" data-shape="${sp}">${stoneSVG(sp,44)}</div>`).join('');
+  document.getElementById('myDim').classList.add('on');
+}
+// 설정 버튼 → 돌탑(프로필 편집 영역)으로 이동
+document.getElementById('pbSettings').addEventListener('click', ()=>{ setTab('tower'); });
+// 닫기(딤 클릭)
+document.getElementById('myDim').addEventListener('click', e=>{ if(e.target.id==='myDim') e.currentTarget.classList.remove('on'); });
+// 닉네임 저장
+document.getElementById('myNickSave').addEventListener('click', ()=>{
+  const v=document.getElementById('myNickInput').value.trim();
+  if(v){
+    if(/(씨발|시발|광고|010\d{7})/.test(v)){ toast('쓸 수 없는 표현이에요'); return; }
+    profile.name=v; profile.custom=true;
+  } else {
+    // 비우면 자동 닉네임으로 되돌림
+    const g=genNick(); profile.name=g.name; profile.tail=g.tail; profile.custom=false;
+  }
+  saveProfile(profile); renderProfileBar(); openMyPage();
+  toast('저장했어요');
+});
+// 대표돌 선택
+document.getElementById('myStonePicker').addEventListener('click', e=>{
+  const p=e.target.closest('.my-pick'); if(!p) return;
+  profile.stoneShape=+p.dataset.shape; saveProfile(profile);
+  document.getElementById('myStone').innerHTML=stoneSVG(profile.stoneShape,96);
+  document.querySelectorAll('.my-pick').forEach(x=>x.classList.toggle('on', x===p));
+  renderProfileBar();
+});
+function openProfile(){
+  const shape=(profile.stoneShape!=null)?profile.stoneShape:2;
+  document.getElementById('psStone').innerHTML=stoneSVG(shape,70);
+  document.getElementById('psName').textContent=profile.name;
+  const d=new Date(profile.startTs);
+  document.getElementById('psSince').textContent=`${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()} 부터`;
+  document.getElementById('psDays').textContent=daysSince(profile.startTs)+1;
+  document.getElementById('psCount').textContent=stones.length;
+  document.getElementById('psHearts').textContent=stones.reduce((a,s)=>a+(s.thanks||0),0);
+  document.getElementById('psNickInput').value=profile.custom?profile.name:'';
+  document.getElementById('psNickInput').placeholder=profile.name;
+  // 색상 선택지
+  const cur=(profile.stoneShape!=null)?profile.stoneShape:2;
+  document.getElementById('psColors').innerHTML=STONE_COLORS.map((c,i)=>
+    `<div class="ps-color ${i===cur%STONE_COLORS.length?'on':''}" data-cidx="${i}" style="background:${c}"></div>`).join('');
+  document.getElementById('profileDim').classList.add('on');
+}
+let psPickedColor=null;
+document.getElementById('pbSettings').addEventListener('click', openProfile);
+document.getElementById('psColors').addEventListener('click', e=>{
+  const c=e.target.closest('.ps-color'); if(!c) return;
+  document.querySelectorAll('.ps-color').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on'); psPickedColor=+c.dataset.cidx;
+  document.getElementById('psStone').innerHTML=stoneSVG(psPickedColor,70);
+});
+document.getElementById('psDice').addEventListener('click', ()=>{
+  const g=genNick();
+  document.getElementById('psNickInput').value=g.name;
+});
+document.getElementById('psSave').addEventListener('click', ()=>{
+  const v=document.getElementById('psNickInput').value.trim();
+  if(v){ profile.name=v; profile.custom=true; }
+  else { const g=genNick(); profile.name=g.name; profile.tail=g.tail; profile.custom=false; }
+  if(psPickedColor!=null) profile.stoneShape=psPickedColor;
+  saveProfile(profile);
+  document.getElementById('profileDim').classList.add('on') && 0;
+  document.getElementById('profileDim').classList.remove('on');
+  renderProfileBar();
+  toast('저장했어요');
+});
+document.getElementById('profileDim').addEventListener('click', e=>{
+  if(e.target.id==='profileDim') document.getElementById('profileDim').classList.remove('on');
+});
+
+
+function requestMyThanks(){
+  if(!fbEnabled()) return;
+  const mine = stones.filter(s=>s.fbKey);
+  if(!mine.length) return;
+  // 전체 피드에서 내 글(fbKey 일치)의 최신 thanks를 읽어 반영
+  fbFetchAll(300).then(items=>{
+    if(!items) return;
+    const byKey={}; items.forEach(it=>{ byKey[it._fbKey]=it.thanks||0; });
+    const counts={};
+    mine.forEach(s=>{ if(byKey[s.fbKey]!=null) counts[s.id]=byKey[s.fbKey]; });
+    applyMyThanks({counts});
+  });
+}
+function applyMyThanks(d){
+  if(!d || !d.counts) return;             // {counts:{id:number,...}}
+  let changed=false;
+  stones.forEach(s=>{
+    if(s.id && typeof d.counts[s.id]==='number' && d.counts[s.id]!==s.thanks){
+      s.thanks=d.counts[s.id]; changed=true;
+    }
+  });
+  if(changed){ save(); if(!S.tower.classList.contains('hide')) renderTower(); }
+  updateTowerTabDot();
+}
+function updateTowerTabDot(){
+  const hasNew = stones.some(s=>(s.thanks||0)>(s.seen||0));
+  const tab=document.querySelector('.tab[data-tab="tower"]');
+  if(tab) tab.classList.toggle('has-new', hasNew);
+}
+function markThanksSeen(){
+  let changed=false;
+  stones.forEach(s=>{ if((s.thanks||0)>(s.seen||0)){ s.seen=s.thanks; changed=true; } });
+  if(changed){ save(); }
+  updateTowerTabDot();
+}
+function escapeHTML(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* 돌 탭 → 캡션 표시 + 상세 시트 */
+document.getElementById('towerList').addEventListener('click', e=>{
+  const it=e.target.closest('.stone-item'); if(!it) return;
+  it.classList.toggle('show-cap');
+  openSheet(stones[+it.dataset.i]);
+});
+
+/* ===== 상세 시트 ===== */
+const dim=document.getElementById('sheetDim');
+let sheetStone=null;
+function openSheet(s){
+  sheetStone=s;
+  document.getElementById('sWhen').textContent=whenLabel(s.ts);
+  document.getElementById('sTxt').textContent='“'+s.text+'”';
+  document.getElementById('sCat').textContent=s.cat;
+  dim.classList.add('on');
+}
+dim.addEventListener('click', e=>{ if(e.target===dim) dim.classList.remove('on'); });
+document.getElementById('sShare').addEventListener('click', ()=>{
+  if(!sheetStone) return;
+  dim.classList.remove('on');
+  openShare(sheetStone);
+});
+
+/* ===== 공유 카드 (canvas) ===== */
+const shareDim=document.getElementById('shareDim');
+const shareCanvas=document.getElementById('shareCanvas');
+let shareStone=null;
+
+function drawStoneOnCanvas(ctx, idx, centerX, topY, scale){
+  const s=STONE_SHAPES[idx%STONE_SHAPES.length];
+  ctx.save();
+  ctx.translate(centerX-65*scale, topY);
+  ctx.scale(scale, scale);
+  ctx.fillStyle=s.fill;
+  ctx.fill(new Path2D(s.d));
+  const dark=(s.fill==="#3A2E28"||s.fill==="#6B5D54");
+  const eye=dark?"#fff":"#3A2E28";
+  ctx.fillStyle=eye;
+  ctx.beginPath(); ctx.arc(56,58,3.0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(86,58,3.0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle=eye; ctx.lineWidth=3; ctx.lineCap='round';
+  ctx.stroke(new Path2D("M58 68 Q72 78 84 68"));
+  ctx.restore();
+}
+function wrapCanvasText(ctx, text, maxWidth){
+  const chars=[...text]; const lines=[]; let line='';
+  for(const ch of chars){
+    const test=line+ch;
+    if(ctx.measureText(test).width>maxWidth && line){ lines.push(line); line=ch; }
+    else line=test;
+  }
+  if(line) lines.push(line);
+  return lines;
+}
+function renderShareCard(s){
+  const W=1080, H=1350;
+  const ctx=shareCanvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  // 배경(크림) + 안쪽 카드 라인
+  ctx.fillStyle='#F7F5F2'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#ECE8E3'; ctx.lineWidth=3;
+  ctx.strokeRect(40,40,W-80,H-80);
+  ctx.textAlign='center';
+
+  // --- 콘텐츠 블록을 세로 중앙 기준으로 묶어 배치 (v2 카드 레이아웃 규칙) ---
+  // 돌은 drawStoneOnCanvas가 topY(상단) 기준이며 실제 높이 ≈ 100*scale.
+  ctx.font='700 58px -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  const quote='“'+s.text+'”';
+  const lines=wrapCanvasText(ctx, quote, W-220);
+  const lh=78;
+
+  const labelH=34;
+  const gapLabelStone=64;    // 라벨 baseline → 돌 상단
+  const stoneScale=3.0;
+  const stoneH=100*stoneScale; // 돌 실제 높이 ≈ 300
+  const gapStoneQuote=80;    // 돌 하단 → 문구 첫 줄 baseline (겹침 방지 최소값)
+  const quoteH=lines.length*lh;
+  const gapQuoteChip=76;     // 문구 마지막 → 칩
+  const chipH=60;
+  const gapChipDate=64;
+  const dateH=30;
+  const blockH = labelH+gapLabelStone+stoneH+gapStoneQuote+quoteH+gapQuoteChip+chipH+gapChipDate+dateH;
+
+  // 워드마크(H-100) 제외 영역 중앙에 블록 배치
+  const areaTop=70, areaBottom=H-180;
+  let topLabel = areaTop + ((areaBottom-areaTop) - blockH)/2; // 블록 최상단
+  let y = topLabel + labelH;
+
+  // 상단 라벨(언제)
+  ctx.textBaseline='alphabetic';
+  ctx.fillStyle='#C98A5E';
+  ctx.font='700 34px -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  ctx.fillText(whenLabel(s.ts), W/2, y);
+
+  // 돌 일러스트 (라벨 아래, topY=상단 기준)
+  const stoneTop = y + gapLabelStone;
+  drawStoneOnCanvas(ctx, s.shape, W/2, stoneTop, stoneScale);
+
+  // 고마운 한 줄 (돌 하단 + 최소 간격부터 시작 → 겹침 없음)
+  ctx.fillStyle='#3A2E28';
+  ctx.font='700 58px -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  let qy = stoneTop + stoneH + gapStoneQuote;
+  lines.forEach(ln=>{ ctx.fillText(ln, W/2, qy); qy+=lh; });
+
+  // 대상 칩
+  const chipY = (qy - lh) + gapQuoteChip;
+  ctx.font='700 32px -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  const cw=ctx.measureText(s.cat).width+64;
+  ctx.fillStyle='#EFEBE6';
+  roundRect(ctx, W/2-cw/2, chipY-42, cw, 60, 30); ctx.fill();
+  ctx.fillStyle='#9C9298'; ctx.fillText(s.cat, W/2, chipY);
+
+  // 실제 날짜
+  ctx.fillStyle='#BDB5B0';
+  ctx.font='600 30px -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  ctx.fillText(dateLabel(s.ts), W/2, chipY+gapChipDate);
+
+  // 하단 워드마크 (고정)
+  ctx.fillStyle='#6B5D54';
+  ctx.font='800 40px -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  ctx.fillText('고마운돌', W/2, H-100);
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function openShare(s){
+  shareStone=s;
+  renderShareCard(s);
+  shareDim.classList.add('on');
+}
+shareDim.addEventListener('click', e=>{ if(e.target===shareDim) shareDim.classList.remove('on'); });
+document.getElementById('saveImgBtn').addEventListener('click', ()=>{
+  const dataUrl=shareCanvas.toDataURL('image/png');
+  const base64=dataUrl.split(',')[1];
+  postToApp({type:'SAVE_IMAGE', fileName:'thankstone_card.png', mimeType:'image/png', base64});
+  logEvent('share_image');
+  shareDim.classList.remove('on');
+  toast('이미지를 저장했어요');
+});
+document.getElementById('shareTxtBtn').addEventListener('click', ()=>{
+  if(!shareStone) return;
+  const text='“'+shareStone.text+'” ('+shareStone.cat+')\n오늘의 고마움을 고마운돌에 새겼어요.';
+  postToApp({type:'SHARE_TEXT', text});
+  logEvent('share_text');
+  shareDim.classList.remove('on');
+  toast('공유를 준비했어요');
+});
+
+/* ===== 되돌아보기 ===== */
+let lastReviewTs = null;
+function renderReview(){
+  const body=document.getElementById('reviewBody');
+  if(stones.length===0){
+    body.innerHTML=`<div class="review-empty">돌이 쌓이면<br>여기서 지난 고마움을 다시 꺼내볼 수 있어요.</div>`;
+    return;
+  }
+  // 지난 것(오늘보다 이전) 우선. 없으면 전체에서.
+  const past = stones.filter(s=>!isToday(s.ts));
+  let pool = past.length>0 ? past : stones;
+  // 직전과 다른 것 우선(2개 이상일 때). 1개뿐이면 그대로.
+  if(pool.length>1 && lastReviewTs!=null){
+    const others = pool.filter(s=>s.ts!==lastReviewTs);
+    if(others.length) pool = others;
+  }
+  const s = pool[Math.floor(Math.random()*pool.length)];
+  lastReviewTs = s.ts;
+  const only1 = stones.length===1;
+  const head = isToday(s.ts) ? '당신이 새긴 고마움이에요' : whenLabel(s.ts)+', 당신은 이게 고마웠대요';
+  body.innerHTML=`
+    <div class="review-card">
+      <div class="when">${head}</div>
+      <div class="stone-mini">${stoneSVG(s.shape,110)}</div>
+      <div class="txt">“${escapeHTML(s.text)}”</div>
+      <div class="cat">${s.cat}</div>
+      <div class="rdate">${dateLabel(s.ts)}</div>
+    </div>
+    ${only1 ? '' : '<button class="review-again" id="againBtn">다른 고마움 꺼내보기</button>'}`;
+}
+// 이벤트 위임 (통째 재렌더돼도 안정적으로 동작)
+document.getElementById('reviewBody').addEventListener('click', e=>{
+  if(e.target.closest('#againBtn')) renderReview();
+});
+function isToday(ts){
+  const d=new Date(ts), n=new Date();
+  return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+}
+function dateLabel(ts){
+  const d=new Date(ts);
+  return `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}`;
+}
+function whenLabel(ts){
+  const d=new Date(ts), now=new Date();
+  const diff=Math.floor((now-d)/86400000);
+  if(diff<=0) return '오늘';
+  if(diff===1) return '어제';
+  if(diff<7) return diff+'일 전';
+  if(diff<30) return Math.floor(diff/7)+'주 전';
+  if(diff<365) return Math.floor(diff/30)+'달 전';
+  return Math.floor(diff/365)+'년 전 오늘';
+}
+
+/* ===== 탭 ===== */
+tabbar.addEventListener('click', e=>{ const t=e.target.closest('.tab'); if(!t) return; setTab(t.dataset.tab); });
+/* ===== 고마움 밭 (남의 고마움 피드) ===== */
+let feedItems = null;      // 화면에 보이는 랜덤 10개
+let feedPool = null;       // 서버에서 받은 전체 풀
+let feedThanked = {};      // 내가 함께 고마워한 항목 id (localStorage)
+let feedPraised = {};      // 내가 칭찬한 항목 id
+let feedReported = {};     // 내가 신고한 항목
+try{ feedThanked = JSON.parse(localStorage.getItem('thankstone_feed_thanked_v1'))||{}; }catch(e){}
+try{ feedPraised = JSON.parse(localStorage.getItem('thankstone_feed_praised_v1'))||{}; }catch(e){}
+try{ feedReported = JSON.parse(localStorage.getItem('thankstone_feed_reported_v1'))||{}; }catch(e){}
+function saveFeedLocal(){
+  try{
+    localStorage.setItem('thankstone_feed_thanked_v1', JSON.stringify(feedThanked));
+    localStorage.setItem('thankstone_feed_praised_v1', JSON.stringify(feedPraised));
+    localStorage.setItem('thankstone_feed_reported_v1', JSON.stringify(feedReported));
+  }catch(e){}
+}
+
+let feedSort = 'recent';   // recent | popular | random
+let feedShown = 0;         // 현재 화면에 표시된 개수 (더보기용)
+const FEED_PAGE = 10;      // 한 번에 보여줄 개수
+
+function loadFeed(){
+  document.getElementById('fieldList').innerHTML='<div class="field-loading" id="fieldLoading">고마움을 불러오는 중…</div>';
+  if(fbEnabled()){
+    fbFetchAll(200).then(items=>{
+      if(items===null){ renderFeedEmpty('고마움을 불러오지 못했어요.\n잠시 후 다시 시도해 주세요.'); return; }
+      applyFeed({ items, todayTotal: items.length });
+    });
+  } else {
+    setTimeout(()=>applyFeed(MOCK_FEED), 300);
+  }
+}
+// 미리보기용 샘플(실기기에선 FEED_RESULT가 먼저 도착해 대체됨)
+const MOCK_FEED = { todayTotal: 3201, items: [
+  { id:'m1', nick:'따뜻한 조약돌', cat:'가족', text:'엄마가 말없이 반찬을 보내주셨다', shape:1, ts:Date.now()-3600e3, thanks:42, reports:0 },
+  { id:'m2', nick:'포근한 몽돌', cat:'나에게', text:'오늘도 무사히 하루를 보낸 나에게', shape:4, ts:Date.now()-7200e3, thanks:128, reports:0 },
+  { id:'m3', nick:'잔잔한 자갈', cat:'친구', text:'힘들 때 먼저 전화해준 친구에게', shape:7, ts:Date.now()-9000e3, thanks:17, reports:0 },
+  { id:'m4', nick:'다정한 차돌', cat:'낯선이', text:'버스에서 자리 양보해주신 분', shape:2, ts:Date.now()-12000e3, thanks:9, reports:0 },
+  { id:'m5', nick:'고요한 강돌', cat:'일상', text:'오랜만에 하늘이 참 맑았다', shape:5, ts:Date.now()-15000e3, thanks:64, reports:0 },
+  { id:'m6', nick:'든든한 돌멩이', cat:'연인', text:'바쁜데도 챙겨줘서 고마워', shape:8, ts:Date.now()-18000e3, thanks:23, reports:0 },
+  { id:'m7', nick:'소소한 알돌', cat:'가족', text:'아빠가 조용히 주유비를 넣어두셨다', shape:3, ts:Date.now()-20000e3, thanks:88, reports:0 },
+  { id:'m8', nick:'물결진 조약돌', cat:'친구', text:'말없이 곁에 있어준 친구', shape:6, ts:Date.now()-22000e3, thanks:31, reports:0 },
+  { id:'m9', nick:'햇살든 몽돌', cat:'나에게', text:'포기하지 않은 나에게', shape:9, ts:Date.now()-24000e3, thanks:55, reports:0 },
+  { id:'m10', nick:'바람든 자갈', cat:'낯선이', text:'우산 씌워주신 낯선 분', shape:0, ts:Date.now()-26000e3, thanks:14, reports:0 },
+  { id:'m11', nick:'정다운 차돌', cat:'일상', text:'따뜻한 커피 한 잔의 여유', shape:11, ts:Date.now()-28000e3, thanks:7, reports:0 },
+  { id:'m12', nick:'넉넉한 강돌', cat:'가족', text:'할머니의 안부 전화', shape:14, ts:Date.now()-30000e3, thanks:40, reports:0 },
+]};
+
+function applyFeed(d){
+  clearTimeout(loadFeed._t);
+  if(!d || d.error || !Array.isArray(d.items)){ renderFeedEmpty('아직 고마움을 불러오지 못했어요.'); return; }
+  feedPool = d.items.filter(it=>{
+    if(!it || typeof it.text!=='string') return false;
+    if((it.reports||0) >= 3) return false;
+    if(feedReported[it.id]) return false;
+    if(/(씨발|시발|광고|010\d{7})/.test(it.text)) return false;
+    return true;
+  });
+  if(typeof d.todayTotal==='number' && d.todayTotal>0){
+    document.getElementById('fieldProof').textContent=d.todayTotal.toLocaleString();
+    document.getElementById('fieldProofWrap').style.display='';
+  }
+  applySortAndRender(true);
+}
+
+function sortedPool(){
+  const pool=(feedPool||[]).slice();
+  if(feedSort==='recent') pool.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  else if(feedSort==='popular') pool.sort((a,b)=>(b.thanks||0)-(a.thanks||0));
+  else { // random 셔플
+    for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  }
+  return pool;
+}
+// reset=true면 처음부터, false면 더보기
+let currentSorted = [];
+function applySortAndRender(reset){
+  if(reset){ currentSorted = sortedPool(); feedShown = 0; }
+  feedShown = Math.min(feedShown + FEED_PAGE, currentSorted.length);
+  feedItems = currentSorted.slice(0, feedShown);
+  renderFeed();
+}
+
+function renderFeedEmpty(msg){
+  document.getElementById('fieldList').innerHTML='<div class="field-empty">'+msg.replace(/\n/g,'<br>')+'</div>';
+}
+function feedDateLabel(ts){
+  const d=new Date(ts);
+  return `${d.getMonth()+1}월 ${d.getDate()}일`;
+}
+function renderFeed(){
+  if(!feedItems || feedItems.length===0){ renderFeedEmpty('아직 새겨진 고마움이 없어요.\n첫 고마움을 남겨보세요.'); return; }
+  const html = feedItems.map(it=>{
+    const thanked = !!feedThanked[it.id];
+    const praised = !!feedPraised[it.id];
+    const shownThanks = (it.thanks||0);
+    const shownPraise = (it.praises||0);
+    return `
+    <div class="fcard" data-id="${it.id}">
+      <div class="fcard-top">
+        <span class="fcard-stone">${stoneSVG(it.shape!=null?it.shape:0, 52)}</span>
+        <div class="fcard-meta">
+          <span class="fcard-who">${escapeHTML(it.nick||'고마운 돌')}</span><span class="fcard-cat">${escapeHTML(it.cat||'일상')}</span>
+          <div class="fcard-date">${it.ts?feedDateLabel(it.ts):''}</div>
+        </div>
+        <button class="fcard-report" data-report="${it.id}">신고</button>
+      </div>
+      <div class="fcard-text">“${escapeHTML(it.text)}”</div>
+      <div class="fcard-actions">
+        <button class="fcard-thank ${thanked?'done':''}" data-thank="${it.id}">
+          <svg class="heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.35-9.5-8.5C1 8.5 2.5 5 6 5c2 0 3.2 1.2 4 2.3C10.8 6.2 12 5 14 5c3.5 0 5 3.5 3.5 6.5C19 15.65 12 20 12 20z" stroke-linejoin="round"/></svg>${thanked?'고마워했어요':'고마워요'} <b>${shownThanks}</b>
+        </button>
+        <button class="fcard-praise ${praised?'done':''}" data-praise="${it.id}">
+          <svg class="thumb" viewBox="0 0 24 24"><path d="M7 10v10M7 10l4-7c.6 0 1.5.4 1.5 1.8 0 1-.5 2.7-.8 3.7h5.1c1 0 1.7.9 1.5 1.9l-1.3 6c-.2.9-1 1.6-1.9 1.6H7" stroke-linejoin="round" stroke-linecap="round"/></svg>${praised?'칭찬했어요':'칭찬해요'} <b>${shownPraise}</b>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+  const more = (feedShown < currentSorted.length)
+    ? '<button class="feed-more" id="feedMore">더보기</button>' : '';
+  document.getElementById('fieldList').innerHTML=html+more;
+  const mb=document.getElementById('feedMore');
+  if(mb) mb.addEventListener('click', ()=>{ applySortAndRender(false); });
+}
+
+// 정렬 탭 (최신/인기/랜덤)
+document.getElementById('fieldSorts').addEventListener('click', e=>{
+  const chip=e.target.closest('.sort-chip'); if(!chip) return;
+  const sort=chip.dataset.sort;
+  if(sort===feedSort && sort!=='random') return;   // 랜덤은 다시 눌러도 셔플
+  feedSort=sort;
+  document.querySelectorAll('.sort-chip').forEach(c=>c.classList.toggle('on', c.dataset.sort===sort));
+  applySortAndRender(true);
+  document.querySelector('.field-scroll').scrollTop=0;
+});
+
+// 함께 고마워하기 / 신고 (이벤트 위임)
+document.getElementById('fieldList').addEventListener('click', e=>{
+  const th=e.target.closest('[data-thank]');
+  const pr=e.target.closest('[data-praise]');
+  const rp=e.target.closest('[data-report]');
+  if(th){
+    const id=th.dataset.thank;
+    if(feedThanked[id]) return;                 // 중복 방지
+    feedThanked[id]=1; saveFeedLocal();
+    const it=(feedPool||feedItems).find(x=>x.id===id);
+    if(it){ it.thanks=(it.thanks||0)+1; if(it._fbKey) fbPatch(it._fbKey, {thanks:it.thanks}); }
+    logEvent('feed_thank');
+    renderFeed();
+    toast('함께 고마워했어요');
+  } else if(pr){
+    const id=pr.dataset.praise;
+    if(feedPraised[id]) return;                 // 중복 방지
+    feedPraised[id]=1; saveFeedLocal();
+    const it=(feedPool||feedItems).find(x=>x.id===id);
+    if(it){ it.praises=(it.praises||0)+1; if(it._fbKey) fbPatch(it._fbKey, {praises:it.praises}); }
+    logEvent('feed_praise');
+    renderFeed();
+    toast('칭찬했어요');
+  } else if(rp){
+    const id=rp.dataset.report;
+    feedReported[id]=1; saveFeedLocal();
+    const it=(feedPool||feedItems).find(x=>x.id===id);
+    if(it && it._fbKey) fbPatch(it._fbKey, {reports:(it.reports||0)+1});
+    if(feedPool) feedPool=feedPool.filter(x=>x.id!==id);
+    feedItems=feedItems.filter(x=>x.id!==id);
+    renderFeed();
+    toast('신고했어요. 검토 후 조치돼요');
+  }
+});
+
+function setTab(which){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.tab===which));
+  if(which==='tower'){ show('tower'); renderTower(); requestMyThanks(); markThanksSeen(); }
+  else if(which==='field'){ show('field'); loadFeed(); }
+  else{ show('review'); renderReview(); }
+}
+
+
+
+/* ===== A: 회상 훅 (앱 열면 지난 고마움 불쑥, 푸시 예약) ===== */
+function findRecallStone(){
+  // 오늘과 같은 '월-일'인 지난 기록(1달 전/작년 등) 우선, 없으면 30일+ 지난 것 랜덤
+  const now=new Date();
+  const sameDay = stones.filter(s=>{
+    const d=new Date(s.ts);
+    return (d.getMonth()!==now.getMonth()||d.getDate()!==now.getDate()||d.getFullYear()!==now.getFullYear())
+      && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+  });
+  if(sameDay.length) return sameDay[Math.floor(Math.random()*sameDay.length)];
+  const old = stones.filter(s=>(now-new Date(s.ts))>=30*86400000);
+  if(old.length) return old[Math.floor(Math.random()*old.length)];
+  return null;
+}
+function showRecallBanner(){
+  const s=findRecallStone(); if(!s) return;
+  const wrap=document.getElementById('recallBanner');
+  document.getElementById('recallWhen').textContent=whenLabel(s.ts)+', 이게 고마웠대요';
+  document.getElementById('recallText').textContent='“'+s.text+'”';
+  wrap.classList.remove('hide');
+  wrap.onclick=()=>{ wrap.classList.add('hide'); setTab('review'); };
+  document.getElementById('recallClose').onclick=(e)=>{ e.stopPropagation(); wrap.classList.add('hide'); };
+}
+// 회상 푸시 예약: 다음 '한 달 전/작년 오늘'류 기념일에 알림 (App.tsx가 스케줄)
+function scheduleRecallPush(){
+  if(stones.length===0) return;
+  // 가장 오래된 기록의 월-일 기준으로 다음 도래일 알림 예약을 요청(중복은 App.tsx가 관리)
+  postToApp({type:'SCHEDULE_RECALL', items: stones.filter(s=>s.id).map(s=>({id:s.id, ts:s.ts})) });
+}
+
+/* 초기: 이미 돌이 있으면 바로 돌탑으로 */
+if(stones.length>0){
+  stage='tower';
+  show('tower'); ctaWrap.classList.add('hide'); tabbar.classList.remove('hide');
+  document.getElementById('fab').classList.remove('hide');
+  setTab('tower'); renderTower();
+  showRecallBanner();     // A: 열면 지난 고마움 불쑥
+  scheduleRecallPush();   // A: 다음 기념일 푸시 예약
+}
 </script>
 </body>
 </html>
